@@ -8,7 +8,7 @@
 
 | 도구 | 만드는 사람 | 입력 | 출력 (꼭 있어야 하는 칸) | 결과 개수 상한 | 실패하면 |
 |---|---|---|---|---|---|
-| `get_process_tree(host, pid)` | 🔍 | | `event_id`, … | | |
+| `get_process_tree(host, pid)` | 🔍 | `host`: 조사할 PC 이름(문자열), `pid`: 조사할 프로세스 번호(정수) | `host`, `pid`, `process`, `ancestors`, `children`. 반환하는 각 기록에 `event_id` 포함. 기록 누락 시 `note`에 사유 표시 | 대상 프로세스 1건, 부모·조상은 최대 5단계. 자식 결과 상한은 별도 합의 | 대상 기록이 없으면 `process: None`, `ancestors: []`, `children: []`와 사유(`note`)를 반환. 부모 기록이 중간에 없으면 찾은 기록까지 반환하고 사유 표시. OpenSearch 연결 실패 등 검색 오류는 빈 결과로 처리하지 않고 별도 오류로 알림 |
 | `get_process_activity(host, pid)` | 🔍 | | `event_id`, … | | |
 | `get_host_timeline(host, around_ts, minutes)` | 🔍 | | `event_id`, … | | |
 | `search_playbook(query, k)` | 📘 | | `text`, `source`(파일 이름), `page`, … | | |
@@ -21,3 +21,4 @@
 
 | 바꾼 것 | 이유 | 둘 다 동의 |
 |---|---|---|
+| `get_process_tree` 입력·출력·조회 상한·실패 처리 초안 작성 | 견본과 구현 안내를 바탕으로 사용 방식을 명시. 자식 결과 상한과 실패 처리 방식은 짝과 확인 필요 | 짝 확인 대기 |
