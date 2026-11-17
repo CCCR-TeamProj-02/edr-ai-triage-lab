@@ -37,8 +37,8 @@
 | [ ] | D1-3 | 인프라 0단계: `docker-compose.yml` 작성 | 👥 🔥 | 운전 🔍 / 출제 📘 | `INFRA_STAGES` 깨 보기 규칙, 0단계 | `docker-compose.yml`, `docs/RUNBOOK.md` | 둘 다 `curl localhost:9200`에 응답이 온다. 깨 보기 1개 이상을 진단 후 나눔까지 기록했다 |
 | [ ] | D1-4 | 데이터 관찰 | 👤 | 🔍 | `DAY1` 3-🔍-1 | `DECISIONS.md` 🔍 데이터 관찰 | `credential_dump`의 족보를 `pid` → `ppid`로 따라갔다 |
 | [ ] | D1-5 | 텔레메트리 인덱스 템플릿 (REC-1) | 👤 | 🔍 | `prep/03` 1장 | `index_template.py`, `DECISIONS.md` text vs keyword | 기록이 들어가고 개수를 확인했다 |
-| [ ] | D1-6 | 9개 PDF를 `fast`로 파싱해 보기 | 👤 | 📘 | `data/kb/README.md` | `DECISIONS.md` 📘 파싱 관찰 | 03·06·09에 대한 예상이 맞았는지 적었다 |
-| [ ] | D1-7 | 파싱과 청킹 (DOC-1~3) | 👤 | 📘 | `prep/03` 2장 | `parse.py`, `chunk.py` | `ingest --dry-run`에서 머리말·꼬리말이 빠지고 출처 정보가 붙어 있다 |
+| [x] | D1-6 | 9개 PDF를 `fast`로 파싱해 보기 | 👤 | 📘 | `data/kb/README.md` | `DECISIONS.md` 📘 파싱 관찰 | 03·06·09에 대한 예상이 맞았는지 적었다 |
+| [x] | D1-7 | 파싱과 청킹 (DOC-1~3) | 👤 | 📘 | `prep/03` 2장 | `parse.py`, `chunk.py` | `ingest --dry-run`에서 머리말·꼬리말이 빠지고 출처 정보가 붙어 있다 |
 | [ ] | D1-8 | **중간 나눔:** 각자 준비 → 설명과 질문 → 계약 변경 여부 결정 | 👤 → 👥 | 🔍 먼저 설명 | `DAY1` 3-👥 | `teachback/day1.md` 중간 나눔, `CONTRACT.md` 변경 이력 | 둘 다 상대 결과의 필드 이름과 출처 정보를 말할 수 있다. 변경 여부("변경 없음" 포함)가 기록돼 있다 |
 | [ ] | D1-9 | 조사 도구 3개 (REC-2~4) | 👤 | 🔍 | `DAY1` 3-🔍-3 | `tools.py` | `pytest tests/test_telemetry_tools.py` 통과 |
 | [ ] | D1-10 | 고장 예상표 확인, 도구 결과를 사람이 먼저 읽기 | 👤 | 🔍 | `prep/02` 9-2 | 고장 예상표에 결과 덧붙임 | 01 6장 빈칸 "① 조사"를 내 도구로 찾을 수 있다 |
