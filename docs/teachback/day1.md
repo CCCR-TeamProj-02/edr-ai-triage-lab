@@ -25,13 +25,13 @@
 **📘 문서 담당의 질문**
 1. 부모 번호(예: WS-008 `code.exe`의 8198)는 있는데 부모 기록이 없을 때, `get_process_tree`는 `ancestors`를 어디까지 채우고 `note`에 무엇을 적는가? 에이전트가 이 `note`를 보고 "의심"으로 갈지 "다시 조사"로 갈지 정할 수 있는가?
    - 📘이 코드·계약에서 확인한 것: 계약은 "부모 기록이 중간에 없으면 찾은 기록까지 반환하고 사유 표시"이고, 견본 `mocks.py`에는 `note: "부모 프로세스(pid 8015, explorer.exe)의 생성 기록이 없습니다."` 예가 있다. `note`를 보고 어느 길로 갈지는 아직 정해진 곳이 없다 (2일차 가드레일·판정에서 정할 일).
-   - 답: (나눔 후 적기)
+   - 답:
 2. `process.cmdline`과 `script_text`를 `text`+`keyword`로 둔 이유는, 단어로 찾는 검색과 정확히 같은 값 검색을 둘 다 쓰기 위해서라고 이해했다. 도구가 실제로 쓰는 쪽은 어느 쪽인가? (`get_process_activity` 조회가 `host`와 `pid`의 `keyword` 필터만으로 충분한가?)
    - 📘이 코드·계약에서 확인한 것: `tools.py` REC-3 안내가 "host와 pid가 같은 기록 중 type이 network, file, registry, script인 것을 시간순으로"라서 `keyword` 필터만으로 해결되는 것으로 읽힌다. 아직 `NotImplementedError`라 실제 구현은 확인하지 못했다.
-   - 답: (나눔 후 적기)
+   - 답:
 3. `get_host_timeline`은 기준 시각 ± `minutes`를 100건까지만 주고 `truncated`로 알린다. 가짜 데이터에서 `credential_dump` 같은 사건이 100건을 넘는 경우가 있었는가? 있다면 오래된 순으로 자르는가, 기준 시각에 가까운 순으로 자르는가?
    - 📘이 코드·계약에서 확인한 것: 계약은 "최대 100건, 초과해 일부만 반환하면 `truncated: True`". `tools.py` REC-4 안내도 같다. 어느 쪽부터 자르는지는 계약에도 안내에도 적혀 있지 않고, 100건을 넘는 사건이 있는지도 확인하지 못했다. REC-4 구현 전에 정해야 할 점이다.
-   - 답: (나눔 후 적기)
+   - 답:
 
 ## 📘 문서 담당이 설명한 것
 - `search_playbook(query, k)`는 한국어 질문을 받아 `[{source, page, category, text, score}]`를 최대 `k`개 돌려준다. `source`는 파일 이름이라 권고에 출처를 붙이는 데 쓴다.
