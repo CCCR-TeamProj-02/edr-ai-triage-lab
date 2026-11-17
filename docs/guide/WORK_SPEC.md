@@ -33,7 +33,7 @@
 | ✔ | 번호 | 작업 | 형태 | 담당 / 운전 | 볼 자료 | 결과물 | 완료 기준 |
 |---|---|---|---|---|---|---|---|
 | [ ] | D1-1 | 시작 전 확인: 역할 기록, 링크 메모 소개, Interrupts 질문 답 맞추기 | 👥 | | `prep/03` 6장, `DAY1` 0 | `teachback/day1.md` 맨 위 역할 | 도구 호출과 RAG의 차이를 둘 다 자기 말로 설명한다 |
-| [ ] | D1-2 | 도구 계약 정하기 | 👥 | | `src/soc/mocks.py`, `DAY1` 1 | `docs/CONTRACT.md` (둘 다 이름) | 🔍 결과에 `event_id`, 📘 결과에 `source`가 있다고 합의했다 |
+| [x] | D1-2 | 도구 계약 정하기 | 👥 | | `src/soc/mocks.py`, `DAY1` 1 | `docs/CONTRACT.md` (둘 다 이름) | 🔍 결과에 `event_id`, 📘 결과에 `source`가 있다고 합의했다 |
 | [ ] | D1-3 | 인프라 0단계: `docker-compose.yml` 작성 | 👥 🔥 | 운전 🔍 / 출제 📘 | `INFRA_STAGES` 깨 보기 규칙, 0단계 | `docker-compose.yml`, `docs/RUNBOOK.md` | 둘 다 `curl localhost:9200`에 응답이 온다. 깨 보기 1개 이상을 진단 후 나눔까지 기록했다 |
 | [ ] | D1-4 | 데이터 관찰 | 👤 | 🔍 | `DAY1` 3-🔍-1 | `DECISIONS.md` 🔍 데이터 관찰 | `credential_dump`의 족보를 `pid` → `ppid`로 따라갔다 |
 | [ ] | D1-5 | 텔레메트리 인덱스 템플릿 (REC-1) | 👤 | 🔍 | `prep/03` 1장 | `index_template.py`, `DECISIONS.md` text vs keyword | 기록이 들어가고 개수를 확인했다 |
