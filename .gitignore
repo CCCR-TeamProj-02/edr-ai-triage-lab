@@ -1,9 +1,32 @@
+# 비밀 값 (절대 커밋하지 않음)
 .env
+.env.*
+!.env.example
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+kubeconfig
+*.kubeconfig
+
+# Python
 .venv/
 __pycache__/
 *.pyc
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# 에디터
+.idea/
+.vscode/
+
+# 생성된 데이터
 data/sim.jsonl
 data/sim_labels.jsonl
 data/eval/
-dist/
-.pytest_cache/
