@@ -70,11 +70,32 @@ def get_process_tree(host: str, pid: int) -> dict:
         host: PC 이름 (예: WS-007)
         pid: 프로세스 번호 (알림의 pid)
     """
-    # TODO[REC-2]: 부모를 최대 MAX_ANCESTORS단계까지 거슬러 올라가고, 자식(ppid == pid)도 찾습니다.
-    # 반드시 host까지 같이 조건에 넣으세요. 다른 PC에 같은 pid가 있을 수 있습니다. (02 문서 9-2 고장 예상표)
-    # 돌려줄 모양: {"host", "pid", "process": 요약 또는 None, "ancestors": [가까운 부모부터 요약], "children": [요약]}
-    # 요약은 summarize()를 쓰고, 프로세스 기록을 찾을 때는 _find_process()를 쓰면 됩니다.
-    raise NotImplementedError("TODO[REC-2]")
+    process = _find_process(host, pid)
+    if process is None:
+        return {"host": host, "pid": pid, "process": None, "ancestors": [], "children": [],
+                "note": f"{host}에서 대상 프로세스(pid={pid})의 생성 기록을 찾을 수 없습니다."}
+    ancestors = []
+    note = None
+    current = process
+    seen = {pid}
+    for _ in range(MAX_ANCESTORS):
+        parent_pid = current.get("process", {}).get("ppid")
+        if parent_pid is None or parent_pid in seen:
+            break
+        seen.add(parent_pid)
+        current = _find_process(host, parent_pid)
+        if current is None:
+            note = f"{host}에서 부모 프로세스(pid={parent_pid})의 생성 기록을 찾을 수 없어 조상 조회를 중단했습니다."
+            break
+        ancestors.append(summarize(current))
+
+    children = _search({"size": 50, "sort": [{"ts": "asc"}], "query": {"bool": {"filter": [
+        {"term": {"host": host}}, {"term": {"type": "process"}}, {"term": {"process.ppid": pid}}]}}})
+    result = {"host": host, "pid": pid, "process": summarize(process),
+              "ancestors": ancestors, "children": [summarize(e) for e in children]}
+    if note is not None:
+        result["note"] = note
+    return result
 
 
 def get_process_activity(host: str, pid: int) -> dict:
@@ -85,9 +106,10 @@ def get_process_activity(host: str, pid: int) -> dict:
         host: PC 이름 (예: WS-007)
         pid: 프로세스 번호
     """
-    # TODO[REC-3]: host와 pid가 같은 기록 중 type이 network, file, registry, script인 것을 시간순으로 (최대 50건).
-    # 돌려줄 모양: {"host", "pid", "events": [summarize(e) ...]}
-    raise NotImplementedError("TODO[REC-3]")
+    rows = _search({"size": 50, "sort": [{"ts": "asc"}], "query": {"bool": {"filter": [
+        {"term": {"host": host}}, {"term": {"process.pid": pid}},
+        {"terms": {"type": ["network", "file", "registry", "script"]}}]}}})
+    return {"host": host, "pid": pid, "events": [summarize(e) for e in rows]}
 
 
 def get_host_timeline(host: str, around_ts: str, minutes: int = 10) -> dict:
@@ -96,13 +118,20 @@ def get_host_timeline(host: str, around_ts: str, minutes: int = 10) -> dict:
 
     Args:
         host: PC 이름 (예: WS-007)
-        around_ts: 기준 시각 (ISO 형식, 예: 2026-11-16T09:12:02Z). 보통 알림 시각
-        minutes: 기준 시각 앞뒤로 몇 분까지 볼지 (기본 10)
+        around_ts: 시간대가 포함된 기준 시각 (ISO 형식, 예: 2026-11-16T09:12:02Z). 보통 알림 시각
+        minutes: 기준 시각 앞뒤로 몇 분까지 볼지 (0 이상의 정수, 기본 10)
     """
-    # TODO[REC-4]: host가 같고 ts가 [around_ts - minutes, around_ts + minutes] 안인 기록을 시간순으로 (최대 TIMELINE_LIMIT건).
-    # 결과가 잘렸으면 truncated=True로 알려 줍니다 (LLM이 범위를 줄여 다시 부를 수 있게).
-    # 돌려줄 모양: {"host", "from", "to", "events": [summarize(e) ...], "truncated": bool}
-    raise NotImplementedError("TODO[REC-4]")
+    if isinstance(minutes, bool) or not isinstance(minutes, int) or minutes < 0:
+        raise ValueError("minutes는 0 이상의 정수여야 합니다.")
+    around = _parse_ts(around_ts)
+    if around.utcoffset() is None:
+        raise ValueError("around_ts에는 시간대 정보가 포함되어야 합니다.")
+    window = timedelta(minutes=minutes)
+    start, end = _iso(around - window), _iso(around + window)
+    rows = _search({"size": TIMELINE_LIMIT + 1, "sort": [{"ts": "asc"}], "query": {"bool": {"filter": [
+        {"term": {"host": host}}, {"range": {"ts": {"gte": start, "lte": end}}}]}}})
+    return {"host": host, "from": start, "to": end,
+            "events": [summarize(e) for e in rows[:TIMELINE_LIMIT]], "truncated": len(rows) > TIMELINE_LIMIT}
 
 
 
