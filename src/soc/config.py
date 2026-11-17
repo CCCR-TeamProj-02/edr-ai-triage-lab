@@ -31,6 +31,9 @@ class Settings(BaseSettings):
 
     # OpenSearch -----------------------------------------------------------
     opensearch_url: str = "http://localhost:9200"
+    opensearch_username: str = ""
+    opensearch_password: str = ""
+    opensearch_ca_certs: str = ""
     index_events: str = "edr-events"          # 실제 인덱스는 edr-events-YYYY.MM.DD (템플릿: edr-events-*)
     index_alerts: str = "edr-alerts"
     index_reports: str = "triage-reports"
