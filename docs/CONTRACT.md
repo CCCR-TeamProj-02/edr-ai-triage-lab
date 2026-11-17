@@ -8,9 +8,9 @@
 
 | 도구 | 만드는 사람 | 입력 | 출력 (꼭 있어야 하는 칸) | 결과 개수 상한 | 실패하면 |
 |---|---|---|---|---|---|
-| `get_process_tree(host, pid)` | 🔍 | `host`: 조사할 PC 이름(문자열), `pid`: 조사할 프로세스 번호(정수) | `host`, `pid`, `process`, `ancestors`, `children`. 반환하는 각 기록에 `event_id` 포함. 기록 누락 시 `note`에 사유 표시 | 대상 프로세스 1건, 부모·조상은 최대 5단계. 자식 결과 상한은 별도 합의 | 대상 기록이 없으면 `process: None`, `ancestors: []`, `children: []`와 사유(`note`)를 반환. 부모 기록이 중간에 없으면 찾은 기록까지 반환하고 사유 표시. OpenSearch 연결 실패 등 검색 오류는 빈 결과로 처리하지 않고 별도 오류로 알림 |
-| `get_process_activity(host, pid)` | 🔍 | | `event_id`, … | | |
-| `get_host_timeline(host, around_ts, minutes)` | 🔍 | | `event_id`, … | | |
+| `get_process_tree(host, pid)` | 🔍 | `host`: 조사할 PC 이름(문자열), `pid`: 조사할 프로세스 번호(정수) | `host`, `pid`, `process`, `ancestors`, `children`. 반환하는 각 기록에 `event_id` 포함. 기록 누락 시 `note`에 사유 표시 | 대상 프로세스 1건, 부모·조상은 최대 5단계. 자식은 최대 50건(제안: 짝 확인 필요) | 대상 기록이 없으면 `process: None`, `ancestors: []`, `children: []`와 사유(`note`)를 반환. 부모 기록이 중간에 없으면 찾은 기록까지 반환하고 사유 표시. OpenSearch 연결 실패 등 검색 오류는 빈 결과로 처리하지 않고 별도 오류로 알림 |
+| `get_process_activity(host, pid)` | 🔍 | `host`: 조사할 PC 이름(문자열), `pid`: 조사할 프로세스 번호(정수) | `host`, `pid`, `events`. 같은 PC·프로세스의 통신(`network`)·파일(`file`)·레지스트리(`registry`)·스크립트(`script`) 기록을 시간 오름차순으로 반환. 각 기록에 `event_id` 포함 | 최대 50건 | 조건에 맞는 기록이 없으면 `events: []` 반환. OpenSearch 연결 실패 등 검색 오류는 빈 결과로 처리하지 않고 별도 오류로 알림 |
+| `get_host_timeline(host, around_ts, minutes)` | 🔍 | `host`: 조사할 PC 이름(문자열), `around_ts`: 기준 시각(시간대가 포함된 ISO 8601 문자열, 예: `2026-11-16T09:12:02Z`), `minutes`: 기준 시각 앞뒤 조회 범위(분 단위 정수, 기본 10, 0 이상) | `host`, `from`, `to`, `events`, `truncated`. 기준 시각 ± `minutes` 범위(양 끝 포함)의 해당 PC 기록을 시간 오름차순으로 반환. 각 기록에 `event_id` 포함 | 최대 100건. 일치하는 기록이 100건을 초과해 일부만 반환하면 `truncated: True` | 기록이 없으면 `events: []`, `truncated: False`와 조회 범위(`from`, `to`) 반환. 시각 형식 오류·음수 조회 범위 등 잘못된 입력이나 OpenSearch 검색 오류는 빈 결과로 처리하지 않고 별도 오류로 알림 |
 | `search_playbook(query, k)` | 📘 | | `text`, `source`(파일 이름), `page`, … | | |
 
 ## 꼭 합의할 것
@@ -22,3 +22,4 @@
 | 바꾼 것 | 이유 | 둘 다 동의 |
 |---|---|---|
 | `get_process_tree` 입력·출력·조회 상한·실패 처리 초안 작성 | 견본과 구현 안내를 바탕으로 사용 방식을 명시. 자식 결과 상한과 실패 처리 방식은 짝과 확인 필요 | 짝 확인 대기 |
+| 기록 담당 조사 도구 3개의 계약 초안 완성 | 활동 조회 최대 50건·타임라인 최대 100건은 기존 구현 안내 반영. 트리 자식 최대 50건과 실패·입력 오류 처리 규칙은 합의용 제안이며 구현 시 반영 필요 | 짝 확인 대기 |
