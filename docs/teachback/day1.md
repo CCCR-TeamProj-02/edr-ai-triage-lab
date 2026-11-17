@@ -15,7 +15,6 @@
   2. `get_process_tree`의 자식이 50건을 넘어 잘릴 때 `truncated: True` 같은 표시를 둘지 (타임라인과 같은 방식). 🔍 행이라 박찬솔이 정하도록 두고 `CONTRACT.md`는 건드리지 않음
 
 ## 🔍 기록 담당이 설명한 것
-(박찬솔이 공유한 `day1_record_share.pdf`(2026-11-17)를 📘이 읽고 옮긴 내용)
 - 실제 로그 구조에 맞춰 `index_template.py` 매핑 작성. `host`, `type`, `process.name`은 `keyword`(정확한 값 검색·필터), `ts`/`pid`·`ppid`/`dst_ip`는 `date`/`long`/`ip`, `process.cmdline`·`script_text`는 `text`+`keyword`(단어 검색과 정확한 값 검색 모두).
 - 3,161건 적재 후 전체 3,161건 확인. `evt-00003004` 검색으로 내용 일치 확인.
 - 부모 PID와 자식 PPID를 비교해 실행 관계를 연결했고, 같은 PC·PID의 파일 기록으로 후속 활동을 확인. 조사 도구(REC-2~4)가 이 과정을 자동화해 에이전트에 근거 기록을 줄 예정.
