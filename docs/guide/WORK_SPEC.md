@@ -62,9 +62,9 @@
 | [x] | D2-8 | 교차: 청킹 실험 | 🔁 | 🔍 → 📘 영역, 리뷰 📘 | `DAY2` 3 | `DECISIONS.md` 청킹 + 교차 실험 | 기준점과 Recall@3을 비교했고, 최종 값은 📘가 정했다 |
 | [x] | D2-9 | 02 셀프 체크 | 👥 | | `prep/02` 셀프 체크 | | 4문항에 둘이 답했다 |
 | [ ] | D2-10 | 인프라 1단계: 팀 서버 접속, `bootstrap.sh`, k3s, 첫 Deployment | 👥 🔥 | 운전 📘 / 출제 🔍 | `INFRA_STAGES` 1단계 | `infra/scripts/bootstrap.sh`, `infra/k8s/10~11` | 필수 깨 보기 **1-1** 진단 (진단 후 나눔까지), RUNBOOK 기록 |
-| [ ] | D2-11 | 용량 산정 | 👥 | 주도 🔍 / 검토 📘 | `docs/CAPACITY.md` | `CAPACITY.md` | 2단계 시작 전에 서버 사양(`nproc`, `free -h`) 기준으로 계산했다 |
-| [ ] | D2-12 | 인프라 2단계: OpenSearch StatefulSet | 👥 🔥 | 운전 🔍 / 출제 📘 | `INFRA_STAGES` 2단계 | `infra/k8s/20` | 필수 깨 보기 **2-1** 진단 (진단 후 나눔까지), 파드를 지워도 데이터가 남는다 |
-| [ ] | D2-13 | 인프라 3단계: Postgres, Secret, ConfigMap | 👥 🔥 | 운전 📘 / 출제 🔍 | `INFRA_STAGES` 3단계, `prep/02` 9-1 | `infra/k8s/30~31` | 필수 깨 보기 **3-2** 진단 (진단 후 나눔까지) |
+| [x] | D2-11 | 용량 산정 | 👥 | 주도 🔍 / 검토 📘 | `docs/CAPACITY.md` | `CAPACITY.md` | 2단계 시작 전에 서버 사양(`nproc`, `free -h`) 기준으로 계산했다 |
+| [x] | D2-12 | 인프라 2단계: OpenSearch StatefulSet | 👥 🔥 | 운전 🔍 / 출제 📘 | `INFRA_STAGES` 2단계 | `infra/k8s/20` | 필수 깨 보기 **2-1** 진단 (진단 후 나눔까지), 파드를 지워도 데이터가 남는다 |
+| [x] | D2-13 | 인프라 3단계: Postgres, Secret, ConfigMap | 👥 🔥 | 운전 📘 / 출제 🔍 | `INFRA_STAGES` 3단계, `prep/02` 9-1 | `infra/k8s/30~31` | 필수 깨 보기 **3-2** 진단 (진단 후 나눔까지) |
 | [ ] | D2-14 | 인프라 4단계: 워커, 생성기, 프로브 | 👥 🔥 | 운전 🔍 / 출제 📘 | `INFRA_STAGES` 4단계, `prep/01b` 3~4장 | `infra/k8s/40~41`, `DECISIONS.md` 프로브 설계표 | 필수 깨 보기 **4-3, 4-5** 진단 (진단 후 나눔까지) |
 | [ ] | D2-15 | 인프라 5단계: Ingress | 👥 🔥 | 운전 📘 / 출제 🔍 | `INFRA_STAGES` 5단계 | `infra/k8s/50` | 필수 깨 보기 **5-2** 진단 (진단 후 나눔까지), 외부에서 승인 API 호출이 된다 |
 | [ ] | D2-16 | 고장 예상표와 깨 보기 결과 비교 | 👤 | 각자 | `prep/02` 9-2 | 고장 예상표에 결과 덧붙임 | 예상한 증상과 처음 확인할 곳이 맞았는지 적었다 |
