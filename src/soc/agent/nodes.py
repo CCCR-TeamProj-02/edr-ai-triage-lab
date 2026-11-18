@@ -6,6 +6,7 @@
 - 조사 노드(🔍 도구를 씀)는 📘 문서 담당이 운전  → TODO[AG-1]
 - 권고 노드(📘 검색을 씀)는 🔍 기록 담당이 운전  → TODO[AG-2]
 """
+
 from __future__ import annotations
 
 import json
@@ -23,16 +24,29 @@ from .toolset import search_playbook_fn, telemetry_tools
 
 
 def _alert_message(alert: dict) -> HumanMessage:
-    keep = ("alert_id", "ts", "host", "rule_id", "title", "severity", "techniques", "event_ids", "pid")
+    keep = (
+        "alert_id",
+        "ts",
+        "host",
+        "rule_id",
+        "title",
+        "severity",
+        "techniques",
+        "event_ids",
+        "pid",
+    )
     data = {k: alert.get(k) for k in keep}
-    return HumanMessage(content=f"알림:\n```json\n{json.dumps(data, ensure_ascii=False, indent=1)}\n```")
+    return HumanMessage(
+        content=f"알림:\n```json\n{json.dumps(data, ensure_ascii=False, indent=1)}\n```"
+    )
 
 
 def _ids(obj) -> list[str]:
     """도구 결과 안의 모든 event_id를 꺼냅니다 (가드레일이 '실제로 조회한 기록'으로 씀)."""
     if isinstance(obj, dict):
-        return [v for k, v in obj.items() if k == "event_id" and isinstance(v, str)] + \
-            [i for k, v in obj.items() if k != "event_id" for i in _ids(v)]
+        return [v for k, v in obj.items() if k == "event_id" and isinstance(v, str)] + [
+            i for k, v in obj.items() if k != "event_id" for i in _ids(v)
+        ]
     if isinstance(obj, list):
         return [i for v in obj for i in _ids(v)]
     return []
@@ -55,18 +69,34 @@ def run_tools(state: TriageState) -> dict:
     for call in last.tool_calls:
         t = tools.get(call["name"])
         try:
-            result = t.invoke(call["args"]) if t else {"error": f"없는 도구: {call['name']}"}
-        except Exception as e:  # noqa: BLE001  도구 오류도 LLM에게 알려 줘서 다른 방법을 찾게 합니다
+            result = (
+                t.invoke(call["args"]) if t else {"error": f"없는 도구: {call['name']}"}
+            )
+        except (
+            Exception
+        ) as e:  # noqa: BLE001  도구 오류도 LLM에게 알려 줘서 다른 방법을 찾게 합니다
             result = {"error": f"{type(e).__name__}: {e}"}
         seen += _ids(result)
-        msgs.append(ToolMessage(content=json.dumps(result, ensure_ascii=False, default=str), tool_call_id=call["id"]))
-    return {"messages": msgs, "seen_event_ids": seen, "tool_rounds": state.get("tool_rounds", 0) + 1,
-            "trace": ["도구"]}
+        msgs.append(
+            ToolMessage(
+                content=json.dumps(result, ensure_ascii=False, default=str),
+                tool_call_id=call["id"],
+            )
+        )
+    return {
+        "messages": msgs,
+        "seen_event_ids": seen,
+        "tool_rounds": state.get("tool_rounds", 0) + 1,
+        "trace": ["도구"],
+    }
 
 
 def after_investigate(state: TriageState) -> str:
     last = state["messages"][-1]
-    if getattr(last, "tool_calls", None) and state.get("tool_rounds", 0) < settings.max_tool_rounds:
+    if (
+        getattr(last, "tool_calls", None)
+        and state.get("tool_rounds", 0) < settings.max_tool_rounds
+    ):
         return "tools"
     return "judge"
 
@@ -74,26 +104,46 @@ def after_investigate(state: TriageState) -> str:
 # ---------------------------------------------------------------------------- 판정과 가드레일
 def judge(state: TriageState) -> dict:
     llm = get_llm().with_structured_output(Verdict, include_raw=True)
-    msgs = [SystemMessage(content=prompt("judge"))] + list(state["messages"]) + [HumanMessage(content="판정하세요.")]
+    msgs = (
+        [SystemMessage(content=prompt("judge"))]
+        + list(state["messages"])
+        + [HumanMessage(content="판정하세요.")]
+    )
     out = llm.invoke(msgs)
-    return {"verdict": out["parsed"].model_dump(), "trace": ["판정"], "usage": usage_of(out["raw"])}
+    return {
+        "verdict": out["parsed"].model_dump(),
+        "trace": ["판정"],
+        "usage": usage_of(out["raw"]),
+    }
 
 
 def check_guardrail(state: TriageState) -> dict:
-    result = guardrail.check(state["verdict"], state.get("seen_event_ids", []), state["alert"])
+    result = guardrail.check(
+        state["verdict"], state.get("seen_event_ids", []), state["alert"]
+    )
     out: dict = {"guardrail": result, "guardrail_log": [result], "trace": ["가드레일"]}
     if result["ok"]:
         return out
     retries = state.get("guardrail_retries", 0)
-    if settings.guardrail_on_fail == "retry" and retries < settings.max_guardrail_retries:
+    if (
+        settings.guardrail_on_fail == "retry"
+        and retries < settings.max_guardrail_retries
+    ):
         # 부족한 점을 알려 주고 다시 조사하게 합니다
         out["guardrail_retries"] = retries + 1
-        out["messages"] = [HumanMessage(content="판정이 검증을 통과하지 못했습니다: " + "; ".join(result["problems"])
-                                        + ". 도구로 근거를 더 확인하고, 실제로 조회한 event_id만 쓰세요.")]
+        out["messages"] = [
+            HumanMessage(
+                content="판정이 검증을 통과하지 못했습니다: "
+                + "; ".join(result["problems"])
+                + ". 도구로 근거를 더 확인하고, 실제로 조회한 event_id만 쓰세요."
+            )
+        ]
         return out
     # 낮추기: 지어낸 근거는 빼고 '의심'으로, 사람 검토 표시
     v = dict(state["verdict"])
-    known = set(state.get("seen_event_ids", [])) | set(state["alert"].get("event_ids", []))
+    known = set(state.get("seen_event_ids", [])) | set(
+        state["alert"].get("event_ids", [])
+    )
     v["evidence_event_ids"] = [i for i in v.get("evidence_event_ids", []) if i in known]
     if v["verdict"] == "malicious":
         v["verdict"] = "suspicious"
@@ -104,7 +154,11 @@ def check_guardrail(state: TriageState) -> dict:
 
 def after_guardrail(state: TriageState) -> str:
     g = state.get("guardrail", {})
-    if not g.get("ok") and state["messages"] and isinstance(state["messages"][-1], HumanMessage):
+    if (
+        not g.get("ok")
+        and state["messages"]
+        and isinstance(state["messages"][-1], HumanMessage)
+    ):
         return "investigate"
     return "recommend"
 
@@ -113,10 +167,27 @@ def after_guardrail(state: TriageState) -> str:
 def recommend(state: TriageState) -> dict:
     """권고 노드: 📘 플레이북 검색으로 근거를 찾고, LLM이 조치를 권고합니다."""
     v, alert = state["verdict"], state["alert"]
-    # TODO[AG-2]: search_playbook_fn()으로 플레이북을 검색합니다. 질문은 알림 제목과 판정(기법)으로 만들고,
-    # 판정과 검색 결과를 LLM에 넘겨 Recommendation 형식으로 권고를 받습니다.
-    # 돌려줄 것: playbook(검색 결과), recommendation(dict), trace ["권고"], usage
-    raise NotImplementedError("TODO[AG-2]")
+    query = alert["title"] + " " + " ".join(v["techniques"])
+
+    search_playbook = search_playbook_fn()
+    playbook = search_playbook(query, k=3)
+    llm = get_llm().with_structured_output(Recommendation, include_raw=True)
+    msgs = [
+        SystemMessage(content=prompt("recommend")),
+        HumanMessage(
+            content=json.dumps(
+                {"verdict": v, "playbook": playbook},
+                ensure_ascii=False,
+            )
+        ),
+    ]
+    out = llm.invoke(msgs)
+    return {
+        "playbook": playbook,
+        "recommendation": out["parsed"].model_dump(),
+        "trace": ["권고"],
+        "usage": usage_of(out["raw"]),
+    }
 
 
 # ---------------------------------------------------------------------------- 사람 승인 (2일차, 운전 🔍)
@@ -132,7 +203,10 @@ def approval(state: TriageState) -> dict:
     # (01번 정책 PDF 5장: 대상 호스트, 판정과 신뢰도, ATT&CK 기법, 근거 event_id, 권고 조치)
     # 재개되면 interrupt()가 사람의 결정({"approved": bool, "approver": str, "comment": str})을 돌려줍니다.
     # 돌려줄 것: approval {"required", "decision", ...}, trace ["승인"]
-    return {"approval": {"required": bool(risky), "decision": "not_implemented"}, "trace": ["승인"]}
+    return {
+        "approval": {"required": bool(risky), "decision": "not_implemented"},
+        "trace": ["승인"],
+    }
 
 
 # ---------------------------------------------------------------------------- 리포트
@@ -140,18 +214,26 @@ def report(state: TriageState) -> dict:
     alert, v = state["alert"], state["verdict"]
     usage = state.get("usage", {})
     rep = {
-        "alert_id": alert["alert_id"], "host": alert["host"], "title": alert.get("title"),
+        "alert_id": alert["alert_id"],
+        "host": alert["host"],
+        "title": alert.get("title"),
         "severity": alert.get("severity"),
-        "verdict": v["verdict"], "confidence": v["confidence"], "techniques": v.get("techniques", []),
-        "evidence_event_ids": v.get("evidence_event_ids", []), "reasoning": v.get("reasoning"),
+        "verdict": v["verdict"],
+        "confidence": v["confidence"],
+        "techniques": v.get("techniques", []),
+        "evidence_event_ids": v.get("evidence_event_ids", []),
+        "reasoning": v.get("reasoning"),
         "needs_review": v.get("needs_review", False),
         "guardrail": state.get("guardrail", {}),
         "guardrail_log": state.get("guardrail_log", []),
         "recommendation": state.get("recommendation", {}),
-        "sources": sorted({h["source"] for h in state.get("playbook", []) if h.get("source")}),
+        "sources": sorted(
+            {h["source"] for h in state.get("playbook", []) if h.get("source")}
+        ),
         "approval": state.get("approval", {}),
         "tool_rounds": state.get("tool_rounds", 0),
-        "usage": usage, "cost_usd": cost_usd(usage),
+        "usage": usage,
+        "cost_usd": cost_usd(usage),
         "trace": state.get("trace", []) + ["리포트"],
     }
     return {"report": rep, "trace": ["리포트"]}
