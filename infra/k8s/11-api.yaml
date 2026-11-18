@@ -1,0 +1,61 @@
+# 인프라 1단계: API만 올립니다. 외부 의존(OpenSearch, Postgres)이 없는 BACKEND=memory 모드라서
+# 문제가 생기면 원인이 서버 설정이나 이미지 둘 중 하나로 좁혀집니다.
+#
+# 이름표(label)와 포트는 아래 번호끼리 같아야 연결됩니다.
+#   ① = ②  Deployment가 관리할 Pod 이름표 = Pod 템플릿에 붙는 이름표
+#   ② = ④  Pod 이름표 = Service가 연결할 이름표
+#   ③ = ⑤  컨테이너가 듣는 포트 = Service가 Pod로 보내는 포트
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  namespace: soc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api                      # ①
+  template:
+    metadata:
+      labels:
+        app: api                    # ②
+    spec:
+      # GHCR 패키지가 private이라 이미지를 받으려면 인증이 필요합니다. 이 Secret은 git에 올리지 않고
+      # 명령으로 클러스터에만 만듭니다 (kubectl create secret docker-registry ghcr-pull ...).
+      # 빠뜨리면 ErrImagePull ... unauthorized (깨 보기 1-2)
+      imagePullSecrets:
+        - name: ghcr-pull
+      containers:
+        - name: api
+          image: ghcr.io/hanjyoon01/edr-ai-triage-api:0.1.0   # 태그 오타 → ImagePullBackOff (깨 보기 1-1)
+          ports:
+            - containerPort: 8000   # ③ Dockerfile의 uvicorn --port 8000
+          env:
+            - { name: BACKEND, value: "memory" }          # OpenSearch·Postgres 없이 메모리 안에서
+            - { name: CHECKPOINTER, value: "memory" }
+            - { name: FAKE_LLM, value: "true" }           # API 키 없이 가짜 LLM
+            - { name: TELEMETRY_TOOLS, value: "mock" }
+            - { name: KB_TOOLS, value: "mock" }
+          resources:
+            requests: { cpu: "100m", memory: "256Mi" }
+            limits: { memory: "768Mi" }
+          livenessProbe:             # 실패하면 컨테이너 재시작. 프로세스가 살아 있는지만 봅니다.
+            httpGet: { path: /healthz, port: 8000 }
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:            # 실패하면 트래픽만 끊습니다 (재시작 안 함)
+            httpGet: { path: /readyz, port: 8000 }
+            periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+  namespace: soc
+spec:
+  type: ClusterIP
+  selector:
+    app: api                        # ④
+  ports:
+    - port: 80                      # Service가 받는 포트 (port-forward svc/api 8000:80)
+      targetPort: 8000              # ⑤ Pod로 보낼 포트
