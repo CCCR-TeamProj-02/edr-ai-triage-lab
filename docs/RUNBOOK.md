@@ -175,3 +175,45 @@ kubectl -n soc get events --sort-by=.lastTimestamp | tail -20
 - **실험 후 상태:** 새 워커는 실행 중이며 실험 알림은 승인 대기 상태다. 이 절차에서는 lease를 강제로 만료시키지 않고 안내된 만료 시각까지 기다렸다.
 - **진단 후 나눔:** 공유할 핵심은 “파드와 무관하게 저장된 체크포인트와 lease를 이용해 다른 워커가 이어 처리한다”이다. 팀원과의 나눔 완료 여부 및 가장 오래 걸린 지점은 실제 대화 후 추가한다.
 - **고장 예상표와 비교:** 다른 워커가 저장된 단계부터 재개한다는 기대는 확인했다. 다만 중단 상태를 미리 구성한 재개 검증이므로, 실제 분석 도중 삭제로 중단 상태가 생성되는 과정까지 재현했다고 기록하지 않는다.
+
+### [5-2] Service selector 오타로 외부 접속이 503 (2026-11-18 · 출제: 🔍 박찬솔 · 진단: 📘 한재윤(Claude 보조) · 복구: 🔍 · 복구 확인 17:02:44)
+- **환경:** k3s 기본 Traefik Ingress, 호스트 `soc.1.201.110.71.nip.io` → Service `api`:80 → API Pod:8000. 정상일 때 `/healthz`는 HTTP 200.
+- **장애 투입:** 출제자가 Service `api`의 selector를 `app: apii`로 바꿨다. Pod와 Ingress는 건드리지 않았다. 투입 시각은 기록하지 않았고(진단 첫 확인 16:58에는 이미 장애 중), 복구까지 걸린 시간은 측정하지 못했다.
+- **증상:** 외부 `/healthz`가 **`503 Service Unavailable`**, 본문 `no available server`. API 파드는 계속 `1/1 Running`이라 파드만 보면 정상처럼 보인다.
+- **확인 명령과 출력 (바깥 → 안쪽 순서):**
+  ```text
+  $ curl -i http://soc.1.201.110.71.nip.io/healthz
+  HTTP/1.1 503 Service Unavailable
+  no available server
+
+  $ kubectl -n soc get pods -l app=api --show-labels
+  api-5f4bd587d9-86j2m   1/1   Running   0   72m   app=api,pod-template-hash=5f4bd587d9
+
+  $ kubectl -n soc exec deploy/api -- python -c "...urlopen('http://localhost:8000/healthz')..."
+  b'{"status":"ok","backend":"real"}'              <- 파드 안의 API는 정상
+
+  $ kubectl -n soc describe ingress api
+  Host: soc.1.201.110.71.nip.io   Path: /   Backends: api:80 ()      <- 규칙은 맞지만 뒤의 ()가 비어 있음
+
+  $ kubectl -n soc get svc api -o jsonpath='{.spec.selector}'
+  {"app":"apii"}                                   <- 오타
+
+  $ kubectl -n soc get endpointslices -l kubernetes.io/service-name=api
+  api-c22fw   IPv4   <unset>   <unset>              <- 연결된 파드 0개
+  ```
+- **원인:** Service의 selector(`app: apii`)와 파드 label(`app: api`)이 달라 Service가 연결할 파드를 하나도 찾지 못했다(EndpointSlice 비어 있음). 그래서 Traefik이 보낼 곳이 없어 `no available server`를 돌려줬다. 파드·API 프로세스·Ingress 규칙은 모두 정상이었다.
+- **안내 문서와 실제의 차이:** 안내 표에는 "이름표 오타, 준비된 파드 없음 → 502"로 되어 있지만 실제 응답은 **503**이었다. 연결 대상 자체가 없으면 503, 대상은 있는데 응답을 못 받으면 502로 구분해 읽는다.
+- **조치:** 올바른 selector가 적힌 매니페스트를 다시 적용한다.
+  ```bash
+  kubectl apply -f infra/k8s/11-api.yaml
+  kubectl -n soc get endpointslices -l kubernetes.io/service-name=api   # ENDPOINTS에 파드 IP가 보여야 함
+  curl -i http://soc.1.201.110.71.nip.io/healthz                        # 200
+  ```
+- **복구 확인 (17:02:44):** 외부 `/healthz` 200, `/readyz` 200, selector `{"app":"api"}`, EndpointSlice `10.42.0.20:8000`. API 파드는 재시작 0회로 그대로였다(파드는 건드리지 않았다).
+- **진단 후 나눔** (깨 보기 규칙 5~6번)
+  - 진단자: 가장 오래 걸린 지점과 이유: (나눈 뒤 작성)
+  - 출제자: 나라면 어디부터 봤을지: (나눈 뒤 작성)
+  - 다음에 같은 증상을 보면 처음 칠 명령: (나눈 뒤 작성. 후보: `kubectl -n soc get endpointslices` — 한 번에 "Service에 연결된 파드가 있는가"가 보임)
+- **재발 방지:** 한 줄씩 짚는 순서는 외부 응답 코드 → 파드 상태·label → Service selector → EndpointSlice. 이름표(label)는 손으로 치지 않고 매니페스트에서 복사해 쓰고, Service를 바꾼 뒤에는 `get endpointslices`로 파드가 연결됐는지 확인한다.
+- **미확인:** 외부에서 승인 API(`POST /approvals/{alert_id}`) 호출은 이 기록 시점에 직접 확인하지 못했다(`/healthz`·`/readyz`·`GET /alerts/{id}` 조회까지만 확인).
+- **고장 예상표와 비교:** (나눈 뒤 02 문서 9-2와 대조해 작성)
