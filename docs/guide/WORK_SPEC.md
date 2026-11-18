@@ -57,7 +57,7 @@
 | [x] | D2-3 | 가드레일 (G-1, G-2) | 👥 | 운전 📘 | `prep/01` 4장 | `guardrail.py`, `DECISIONS.md` 가드레일 실패 처리 | `pytest tests/test_guardrail.py` 통과 |
 | [ ] | D2-4 | 사람 승인과 상태 저장 (H-1, H-2) | 👥 | 운전 🔍 | `prep/03` 3장, `prep/01b` | `nodes.py`, `checkpoint.py` | 격리 권고에서 `pending_approval` → 승인하면 `completed`, API를 껐다 켜도 이어진다 |
 | [x] | D2-5 | 평가 기준점 (내 PC, 교차 작업 전) | 👥 | | `prep/02` 5장 | `DECISIONS.md` 기준점 | `rag_eval`, `agent_eval --n 12` 결과가 기록돼 있다 |
-| [ ] | D2-6 | 틀린 사례 2개 분석 | 👥 | 🔍 도구 쪽 / 📘 검색 쪽 | `prep/02` 5장 | `DECISIONS.md` 틀린 사례 분석 | 사례마다 틀린 단계(도구 / RAG / 판정)를 적었다 |
+| [x] | D2-6 | 틀린 사례 2개 분석 | 👥 | 🔍 도구 쪽 / 📘 검색 쪽 | `prep/02` 5장 | `DECISIONS.md` 틀린 사례 분석 | 사례마다 틀린 단계(도구 / RAG / 판정)를 적었다 |
 | [ ] | D2-7 | 교차: `get_network_connections` 도구 추가 | 🔁 | 📘 → 🔍 영역, 리뷰 🔍 | `DAY2` 3 | `tools.py`, `CONTRACT.md` 표와 변경 이력 | 🔍가 바뀐 부분을 설명할 수 있다 |
 | [ ] | D2-8 | 교차: 청킹 실험 | 🔁 | 🔍 → 📘 영역, 리뷰 📘 | `DAY2` 3 | `DECISIONS.md` 청킹 + 교차 실험 | 기준점과 Recall@3을 비교했고, 최종 값은 📘가 정했다 |
 | [ ] | D2-9 | 02 셀프 체크 | 👥 | | `prep/02` 셀프 체크 | | 4문항에 둘이 답했다 |
