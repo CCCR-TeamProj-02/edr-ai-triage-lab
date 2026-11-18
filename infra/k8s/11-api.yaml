@@ -1,5 +1,6 @@
-# 인프라 1단계: API만 올립니다. 외부 의존(OpenSearch, Postgres)이 없는 BACKEND=memory 모드라서
-# 문제가 생기면 원인이 서버 설정이나 이미지 둘 중 하나로 좁혀집니다.
+# 인프라 1단계: API만 올립니다 (BACKEND=memory 모드였습니다).
+# 인프라 3단계부터는 BACKEND=real, 설정은 ConfigMap·Secret에서 받습니다.
+# 적용 순서: secrets.sh → 31-config.yaml → 30-postgres.yaml → 이 파일 (Secret이 없으면 CreateContainerConfigError)
 #
 # 이름표(label)와 포트는 아래 번호끼리 같아야 연결됩니다.
 #   ① = ②  Deployment가 관리할 Pod 이름표 = Pod 템플릿에 붙는 이름표
@@ -30,12 +31,11 @@ spec:
           image: ghcr.io/hanjyoon01/edr-ai-triage-api:0.1.0   # 태그 오타 → ImagePullBackOff (깨 보기 1-1)
           ports:
             - containerPort: 8000   # ③ Dockerfile의 uvicorn --port 8000
-          env:
-            - { name: BACKEND, value: "memory" }          # OpenSearch·Postgres 없이 메모리 안에서
-            - { name: CHECKPOINTER, value: "memory" }
-            - { name: FAKE_LLM, value: "true" }           # API 키 없이 가짜 LLM
-            - { name: TELEMETRY_TOOLS, value: "mock" }
-            - { name: KB_TOOLS, value: "mock" }
+          # 3단계부터 설정은 ConfigMap(31-config.yaml), 비밀은 Secret(secrets.sh)에서 받습니다.
+          # envFrom은 파드가 시작될 때 한 번만 읽습니다 (바꾸면 rollout restart 필요, 깨 보기 3-4).
+          envFrom:
+            - configMapRef: { name: app-config }
+            - secretRef: { name: app-secrets }
           resources:
             requests: { cpu: "100m", memory: "256Mi" }
             limits: { memory: "768Mi" }

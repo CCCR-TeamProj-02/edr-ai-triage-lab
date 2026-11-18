@@ -76,3 +76,36 @@ kubectl -n soc get events --sort-by=.lastTimestamp | tail -20
 - **재발 방지:** 배포 전 서버의 `vm.max_map_count`를 확인한다. 파드의 `Running` 표시만으로 설정이 적절하다고 판단하지 않고 readiness와 시작 로그도 함께 확인한다. 실습 후 변경한 서버 설정을 반드시 복구한다.
 - **진단 후 나눔:** 팀원과 공유 예정. 공유할 핵심은 “경고가 발생해도 실행될 수 있으므로 예상 결과와 실제 관찰을 구분한다”이다. 가장 오래 걸린 지점과 상대방의 진단 순서는 실제 대화 후 추가한다.
 - **고장 예상표와 비교:** 예상은 시작 실패, 실제는 부족 경고 후 정상 기동이었다. CrashLoopBackOff를 재현했다고 표시하지 않는다. 시작 실패까지 재현해야 하는지는 강사와 확인한다.
+
+### [3-2] Secret의 비밀번호만 바꿨더니 API가 DB에 못 붙음 (2026-11-18 · 출제·진단: 📘 한재윤(Claude 보조) · 복구까지 걸린 시간: 약 50초, 15:45:12 투입 → 15:45:59 복구 확인)
+- **증상:** `kubectl rollout restart` 뒤 새 API 파드가 `0/1 Running`에서 `Ready`가 되지 않음. 이전 파드는 `1/1`로 남아 있어 서비스는 끊기지 않았고, 새 파드는 얼마 뒤 liveness 실패로 재시작(`RESTARTS 1`)됨. 파드 이벤트에는 `Readiness/Liveness probe failed: ... connection refused`만 보임 (원인이 아니라 결과).
+- **확인 명령과 출력:**
+  ```
+  $ kubectl -n soc get events --sort-by=.lastTimestamp | tail
+  Warning  Unhealthy  pod/api-547975bbf7-l7kz9  Readiness probe failed: Get ".../readyz": dial tcp ...:8000: connect: connection refused
+
+  $ kubectl -n soc logs api-547975bbf7-l7kz9 --tail=6
+  psycopg.pool error connecting in 'pool-1': connection failed: connection to server at "10.43.111.166", port 5432 failed:
+  FATAL:  password authentication failed for user "soc"
+
+  $ kubectl -n soc logs postgres-0 --tail=4
+  FATAL:  password authentication failed for user "soc"
+  DETAIL:  Connection matched file ".../pg_hba.conf" line 128: "host all all all scram-sha-256"
+  ```
+  연결은 됐고(서버 주소와 5432 포트에 도달) **인증에서** 거절됨. 그래서 네트워크·Service·DSN 호스트 문제가 아님. `connection refused`(프로브)는 API가 시작 중 DB 연결에 막혀 8000 포트를 아직 열지 못해서 나온 결과.
+- **원인:** 공식 `postgres` 이미지의 `POSTGRES_PASSWORD`는 **데이터 디렉터리가 비어 있는 첫 기동 때만** 쓰인다. 비밀번호는 PVC의 데이터 안에 저장돼 있어서, Secret만 바꿔도 DB의 비밀번호는 그대로다. API는 새 Secret(DSN)으로 접속하니 불일치.
+- **조치:** 바꾸기 전 비밀번호로 Secret을 되돌리고 API를 다시 시작.
+  ```
+  OPENAI_API_KEY="" POSTGRES_PASSWORD=<원래 값> bash infra/scripts/secrets.sh
+  kubectl -n soc rollout restart deploy/api
+  kubectl -n soc rollout status deploy/api
+  curl .../readyz   ->  {"ready":true,"opensearch":true,"postgres":true} [200]
+  ```
+  (비밀번호를 정말 바꿔야 한다면 Secret만이 아니라 DB 안에서도 `ALTER USER soc PASSWORD '...'`로 바꿔야 한다.)
+- **진단 후 나눔** (깨 보기 규칙 5~6번)
+  - 이번 기록은 출제와 진단을 같은 쪽(📘)이 했으므로 규칙 5~6번의 나눔으로 인정되지 않는다. 찬솔님과 다시 나눈 뒤 채운다.
+  - 진단자: 가장 오래 걸린 지점과 이유: (나눈 뒤 작성)
+  - 출제자: 나라면 어디부터 봤을지: (나눈 뒤 작성)
+  - 다음에 같은 증상을 보면 처음 칠 명령: 후보 `kubectl -n soc logs <새 파드>` (이벤트는 `connection refused`만 알려 줘서 원인이 안 보임. 로그에 `password authentication failed`가 있음)
+- **재발 방지:** `secrets.sh`는 Secret이 이미 있으면 기존 `POSTGRES_PASSWORD`를 재사용한다(새로 만들지 않음). 비밀번호를 바꾸는 절차는 Secret 변경 + DB 안의 `ALTER USER` + API 재시작을 한 묶음으로 한다. Secret을 바꾼 뒤에는 `rollout restart` 후 `rollout status`와 `/readyz`로 확인한다.
+- **고장 예상표와 비교:** 02 문서 9-1에서 풀어 본 바로 그 장애(`password authentication failed`)와 같다. 예상한 단서는 로그의 인증 실패였고 실제로 그대로 나왔다. 다만 파드 이벤트가 `connection refused`만 보여 주기 때문에 이벤트를 1순위 단서로 보는 습관(1-1)이 여기서는 원인까지 가지 못했다. 로그를 봐야 했다.
