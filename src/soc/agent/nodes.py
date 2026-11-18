@@ -55,10 +55,19 @@ def _ids(obj) -> list[str]:
 # ---------------------------------------------------------------------------- 조사
 def investigate(state: TriageState) -> dict:
     """조사 노드: LLM이 🔍 조사 도구 중 무엇을 부를지 정합니다."""
-    # TODO[AG-1]: telemetry_tools()를 LLM에 연결(bind_tools)하고, 시스템 프롬프트 + 대화(messages)로 호출합니다.
-    # 첫 호출이면 대화가 비어 있으니 알림 메시지(_alert_message)를 먼저 넣습니다.
-    # 돌려줄 것: 새 메시지들, trace ["조사"], usage (usage_of(응답))
-    raise NotImplementedError("TODO[AG-1]")
+    llm = get_llm().bind_tools(telemetry_tools())
+    # 첫 호출이면 대화가 비어 있으니 알림을 첫 메시지로 넣습니다 (재조사 때는 이미 대화가 있음)
+    new_msgs: list = []
+    history = list(state.get("messages", []))
+    if not history:
+        new_msgs.append(_alert_message(state["alert"]))
+        history = list(new_msgs)
+    resp = llm.invoke([SystemMessage(content=prompt("investigate"))] + history)
+    return {
+        "messages": new_msgs + [resp],
+        "trace": ["조사"],
+        "usage": usage_of(resp),
+    }
 
 
 def run_tools(state: TriageState) -> dict:

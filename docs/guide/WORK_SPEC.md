@@ -45,7 +45,7 @@
 | [x] | D1-11 | 저장과 하이브리드 검색 (DOC-4~5) | 👤 | 📘 | `DAY1` 3-📘-3 | `index.py`, `search.py` | "격리는 누가 승인해?"에 01번이나 09번이 위에 나온다 |
 | [x] | D1-12 | RAG 평가 첫 측정 | 👤 | 📘 | `DAY1` 3-📘-4 | `DECISIONS.md` 첫 Recall@3 | 키워드만 / 벡터만 / 합친 것을 비교했다. 01 6장 빈칸 "③ 권고"를 내 검색으로 찾을 수 있다 |
 | [ ] | D1-13 | 에이전트 화이트보드 설계 (코드 금지) | 👥 | | `prep/01` 5장 그림 | `docs/ARCHITECTURE.md` v1 | 상태, 노드, 갈림길 3개를 정했다 |
-| [ ] | D1-14 | 에이전트 뼈대 (가짜 도구, 가짜 LLM) | 👥 | 조사 노드 📘 / 권고 노드 🔍 | `DAY1` 4-2 | `graph.py`, `nodes.py`, Mermaid 그림 | `pytest tests/test_graph_skeleton.py` 통과, 경로가 끝까지 찍힌다 |
+| [x] | D1-14 | 에이전트 뼈대 (가짜 도구, 가짜 LLM) | 👥 | 조사 노드 📘 / 권고 노드 🔍 | `DAY1` 4-2 | `graph.py`, `nodes.py`, Mermaid 그림 | `pytest tests/test_graph_skeleton.py` 통과, 경로가 끝까지 찍힌다 |
 | [ ] | D1-15 | 티치백 | 👥 | | `DAY1` 5 | `teachback/day1.md` | 질문 3개, 못 답한 질문을 2일차 할 일로 옮겼다 |
 
 ## 2일차: 에이전트를 완성하고, 점수를 재고, 서버에 한 단계씩 올리며 깨 본다
