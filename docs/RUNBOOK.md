@@ -109,3 +109,42 @@ kubectl -n soc get events --sort-by=.lastTimestamp | tail -20
   - 다음에 같은 증상을 보면 처음 칠 명령: 후보 `kubectl -n soc logs <새 파드>` (이벤트는 `connection refused`만 알려 줘서 원인이 안 보임. 로그에 `password authentication failed`가 있음)
 - **재발 방지:** `secrets.sh`는 Secret이 이미 있으면 기존 `POSTGRES_PASSWORD`를 재사용한다(새로 만들지 않음). 비밀번호를 바꾸는 절차는 Secret 변경 + DB 안의 `ALTER USER` + API 재시작을 한 묶음으로 한다. Secret을 바꾼 뒤에는 `rollout restart` 후 `rollout status`와 `/readyz`로 확인한다.
 - **고장 예상표와 비교:** 02 문서 9-1에서 풀어 본 바로 그 장애(`password authentication failed`)와 같다. 예상한 단서는 로그의 인증 실패였고 실제로 그대로 나왔다. 다만 파드 이벤트가 `connection refused`만 보여 주기 때문에 이벤트를 1순위 단서로 보는 습관(1-1)이 여기서는 원인까지 가지 못했다. 로그를 봐야 했다.
+
+
+### [4-3] 워커가 없어 미처리 알림이 쌓임 (2026-11-18 · 출제: 📘 팀원 · 진단·복구: 🔍 박찬솔)
+
+- **환경:** 생성기·워커는 기존 앱 이미지 `0.1.0`과 ConfigMap·Secret을 재사용한다. 저장소는 실제 OpenSearch·Postgres이고, 조사·문서 도구는 mock, LLM은 가짜 모드다. 이 실험은 처리 흐름 검증이며 분석 품질 검증은 아니다.
+- **사전 정상 상태:** 생성기와 워커 배포 성공. 워커 로그에서 `completed`와 `pending_approval` 처리를 확인했고, `status=new` 알림 개수는 0건이었다.
+- **장애 투입:** 팀원이 워커를 0개로 축소했다고 전달했다. 생성기는 유지했다. 이후 진단자의 조회에서도 worker `0/0`과 워커 파드 부재를 확인했다. 아래는 해당 상태를 만드는 명령이다.
+  ```bash
+  sudo kubectl -n soc scale deployment/worker --replicas=0
+  ```
+- **증상과 진단 근거:** 남아 있는 파드는 모두 `1/1 Running`이지만 미처리 알림이 0건에서 3건으로 증가했다. 생성기는 계속 기록을 만들고 OpenSearch 저장 요청도 성공했다.
+  ```text
+  $ sudo kubectl -n soc get deployments,pods
+  deployment.apps/api         1/1
+  deployment.apps/generator   1/1
+  deployment.apps/worker      0/0
+  ```
+  위 출력은 READY 항목 발췌다. 파드 목록에는 api·generator·opensearch·postgres만 있었고 워커 파드는 없었다.
+- **미처리 알림 확인 명령:**
+  ```bash
+  sudo kubectl -n soc exec opensearch-0 -- curl -sS     'http://localhost:9200/edr-alerts/_count'     -H 'Content-Type: application/json'     -d '{"query":{"term":{"status":"new"}}}'
+  ```
+  실제 결과: 장애 전 `count: 0`, 워커 중지 후 `count: 3`.
+- **생성기 확인:**
+  ```bash
+  sudo kubectl -n soc logs deployment/generator --tail=20
+  ```
+  실제 로그 발췌: `2026-11-18 07:28:54,162 generator 기록 12건, 새 알림 0건`. 같은 시각대 저장 요청은 `status:200`이었다. 이 로그의 0건은 해당 생성 주기에 새로 만든 알림 수이고, 누적 미처리 알림 3건과는 다른 값이다.
+- **원인:** 생성·저장 단계는 정상이나 알림을 가져갈 워커가 0개라 처리 단계가 멈췄다. 원하는 복제 수 자체가 0이므로 쿠버네티스가 자동으로 워커를 1개로 늘려 주지 않는다.
+- **복구 절차:**
+  ```bash
+  sudo kubectl -n soc scale deployment/worker --replicas=1
+  sudo kubectl -n soc rollout status deployment/worker --timeout=180s
+  ```
+  이후 위 `_count` 조회를 다시 실행한다.
+- **복구 확인:** 진단자가 워커 복구 후 `count: 0`을 확인했다. 미처리 알림 변화는 **0 → 3 → 0건**이다. `new`가 0이라는 것은 미처리 알림이 없다는 뜻이며, 모든 알림이 승인까지 완료됐다는 뜻은 아니다. 복구 소요 시간은 측정하지 않았다.
+- **재발 방지·다음 확인 순서:** 파드 상태만 보지 말고 `get deployments,pods`로 필요한 워커가 존재하는지 먼저 확인한다. 이어서 미처리 알림 수와 생성기·워커 로그를 비교해 생성·저장·처리 중 어느 단계가 멈췄는지 찾는다.
+- **진단 후 나눔:** 공유할 핵심은 “파드 오류가 없어도 처리할 워커가 없으면 알림이 쌓인다”이다. 팀원과의 나눔 완료 여부는 아직 확인하지 않았다. 가장 오래 걸린 지점과 출제자의 진단 순서는 실제 대화 후 추가한다.
+- **고장 예상표와 비교:** 워커 중지 시 `new`가 쌓이고 복구 후 줄어든다는 예상과 실제 결과가 일치했다. 이번에는 아직 가져가지 않은 알림을 처리한 것이며, 처리 중 중단된 알림의 체크포인트 재개(4-5)를 검증한 것은 아니다.
