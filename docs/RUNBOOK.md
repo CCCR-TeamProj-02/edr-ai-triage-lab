@@ -63,7 +63,9 @@ kubectl -n soc get events --sort-by=.lastTimestamp | tail -20
   Error from server (BadRequest): previous terminated container "opensearch" in pod "opensearch-0" not found
   ```
   `--previous` 오류는 이 파드에 종료된 이전 컨테이너가 없다는 뜻이다. 파드 삭제 전의 로그를 조회하는 명령은 아니다. 위 로그 시각은 원문 그대로이며, 로컬 시각으로 변환하지 않았다.
-- **확인된 원인과 미확인 사항:** 부족 경고의 원인은 서버 값을 65530으로 낮춘 것이다. 현재 구성에서 시작 검사가 경고에 그치고 실행을 허용한 이유는 추가 확인이 필요하다. `single-node` 설정은 확인했지만, 이것만으로 원인을 확정하지 않는다.
+- **CrashLoopBackOff 미재현 사유:** 서버 값을 65530으로 낮춰 부족 경고는 발생했으나, 현재 `discovery.type=single-node` 구성에서는 해당 시작 검사(bootstrap check)가 강제 실패가 아닌 경고로 처리됐다. 로그의 `WARN` 다음에 `started`가 나오고 파드가 `1/1 Running`, 재시작 0회인 점이 이를 뒷받침한다. 컨테이너가 종료되지 않아 반복 재시작과 재시도 대기 상태인 `CrashLoopBackOff`로 이어지지 않았다. 모든 시작 검사가 생략되거나 낮은 값이 적절하다는 뜻은 아니므로 정상값 262144로 복구했다.
+- **설명 근거:** [OpenSearch 공식 Docker 문서](https://docs.opensearch.org/latest/install-and-configure/install-opensearch/docker/)의 `single-node`와 bootstrap checks 설명을 실제 설정·로그와 함께 확인했다. 처음 안내에서 시작 실패를 예상한 것은 단일 노드 설정의 영향을 고려하지 못한 것이었다.
+- **팀 공유 자료:** [D2-12 OpenSearch 명령어 핵심 정리 PDF](teachback/D2-12_OpenSearch_명령어_핵심정리.pdf).
 - **복구 명령:**
   ```bash
   sudo sysctl -w vm.max_map_count=262144
