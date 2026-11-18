@@ -36,3 +36,41 @@ kubectl -n soc get events --sort-by=.lastTimestamp | tail -20
   - 다음에 같은 증상을 보면 처음 칠 명령: (찬솔님과 정한 뒤 작성. 후보: `kubectl -n soc get events --sort-by=.lastTimestamp`)
 - **재발 방지:** 이미지를 `kubectl set image`로 손으로 바꾸지 말고 매니페스트(`11-api.yaml`)를 고쳐 `apply`한다. 태그를 복사해 붙여 넣고 직접 치지 않는다. 배포 뒤 `rollout status`로 새 Pod가 준비됐는지 확인한다.
 - **고장 예상표와 비교:** (찬솔님과 나눈 뒤 02 문서 9-2와 대조해 작성)
+
+
+### [2-1] vm.max_map_count 부족 경고 (2026-11-18 · 실행·진단: 🔍 기록 담당)
+
+- **환경:** 팀 서버 Ubuntu 24.04, k3s, OpenSearch 2.17.1. StatefulSet 1개, `discovery.type=single-node`, 힙 2Gi / 메모리 limit 4Gi. `local-path` PVC 10Gi 사용.
+- **사전 정상 확인:** `opensearch-0`이 `1/1 Running`, StatefulSet이 `1/1`, PVC `data-opensearch-0`이 `Bound`인 것을 확인했다. 테스트 인덱스 `d2-storage-check`에 기록 1건을 넣고 파드를 삭제·재생성한 뒤에도 `count: 1`이 유지됐다.
+- **기대와 실제:** 지침에서는 낮은 `vm.max_map_count`로 시작 실패 및 `CrashLoopBackOff`를 예상했다. 실제로는 부족 경고만 발생하고 파드는 `1/1 Running`, 재시작 0회로 실행을 유지했다. **경고 재현 / 시작 실패 미재현**으로 기록한다.
+- **장애 투입 명령:** 서버의 현재 커널 설정만 변경했으며 영구 설정 파일은 수정하지 않았다.
+  ```bash
+  sudo sysctl -w vm.max_map_count=65530
+  sudo kubectl -n soc delete pod opensearch-0
+  ```
+  첫 명령 출력: `vm.max_map_count = 65530`
+- **확인 명령과 실제 출력 발췌:**
+  ```text
+  $ sudo kubectl -n soc get pod opensearch-0
+  NAME           READY   STATUS    RESTARTS   AGE
+  opensearch-0   1/1     Running   0          49s
+
+  $ sudo kubectl -n soc logs opensearch-0 --tail=100
+  [2026-11-18T06:29:58,999][WARN ][o.o.b.BootstrapChecks] ... max virtual memory areas vm.max_map_count [65530] is too low, increase to at least [262144]
+  [2026-11-18T06:29:59,144][INFO ][o.o.n.Node] ... started
+
+  $ sudo kubectl -n soc logs opensearch-0 --previous --tail=60
+  Error from server (BadRequest): previous terminated container "opensearch" in pod "opensearch-0" not found
+  ```
+  `--previous` 오류는 이 파드에 종료된 이전 컨테이너가 없다는 뜻이다. 파드 삭제 전의 로그를 조회하는 명령은 아니다. 위 로그 시각은 원문 그대로이며, 로컬 시각으로 변환하지 않았다.
+- **확인된 원인과 미확인 사항:** 부족 경고의 원인은 서버 값을 65530으로 낮춘 것이다. 현재 구성에서 시작 검사가 경고에 그치고 실행을 허용한 이유는 추가 확인이 필요하다. `single-node` 설정은 확인했지만, 이것만으로 원인을 확정하지 않는다.
+- **복구 명령:**
+  ```bash
+  sudo sysctl -w vm.max_map_count=262144
+  sysctl vm.max_map_count
+  sudo kubectl -n soc exec opensearch-0 -- curl -sS 'http://localhost:9200/d2-storage-check/_count'
+  ```
+- **복구 확인:** 실행자가 `vm.max_map_count = 262144`와 `count: 1`을 확인했다. PVC는 삭제하지 않았다. 복구까지 걸린 시간은 측정하지 않았다.
+- **재발 방지:** 배포 전 서버의 `vm.max_map_count`를 확인한다. 파드의 `Running` 표시만으로 설정이 적절하다고 판단하지 않고 readiness와 시작 로그도 함께 확인한다. 실습 후 변경한 서버 설정을 반드시 복구한다.
+- **진단 후 나눔:** 팀원과 공유 예정. 공유할 핵심은 “경고가 발생해도 실행될 수 있으므로 예상 결과와 실제 관찰을 구분한다”이다. 가장 오래 걸린 지점과 상대방의 진단 순서는 실제 대화 후 추가한다.
+- **고장 예상표와 비교:** 예상은 시작 실패, 실제는 부족 경고 후 정상 기동이었다. CrashLoopBackOff를 재현했다고 표시하지 않는다. 시작 실패까지 재현해야 하는지는 강사와 확인한다.
