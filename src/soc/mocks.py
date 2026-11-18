@@ -39,6 +39,17 @@ def get_host_timeline(host: str, around_ts: str, minutes: int = 10) -> dict:
     return {"host": host, "from": around_ts, "to": around_ts, "events": [_CMDEXE, _RUNDLL, _DMP], "truncated": False}
 
 
+def get_network_connections(host: str, minutes: int = 60, around_ts: str | None = None) -> dict:
+    """[가짜] 외부 IP별 통신 요약: 연결 횟수, 간격, 규칙성(looks_periodic)."""
+    return {"host": host, "from": "2026-11-16T08:12:02Z", "to": "2026-11-16T09:12:02Z",
+            "connections": [{"dst_ip": "198.51.100.23", "pid": 40702, "process": "rundll32.exe", "count": 6,
+                             "ports": [443], "bytes_out": 1782, "first_ts": "2026-11-16T09:09:32Z",
+                             "last_ts": "2026-11-16T09:12:02Z", "avg_interval_sec": 30.0, "interval_cv": 0.0,
+                             "looks_periodic": True,
+                             "samples": [{"event_id": "evt-00000024", "ts": "2026-11-16T09:09:32Z"}]}],
+            "omitted_destinations": 0, "internal_skipped": 0, "truncated": False}
+
+
 def search_playbook(query: str, k: int = 3) -> list[dict]:
     """[가짜] 질문과 관련된 플레이북·정책 조각. 결과마다 source(파일 이름)가 있습니다."""
     rows = [
@@ -52,5 +63,6 @@ def search_playbook(query: str, k: int = 3) -> list[dict]:
     return rows[:k]
 
 
-TELEMETRY_TOOLS = [tool(get_process_tree), tool(get_process_activity), tool(get_host_timeline)]
+TELEMETRY_TOOLS = [tool(get_process_tree), tool(get_process_activity), tool(get_host_timeline),
+                   tool(get_network_connections)]
 KB_TOOLS = [tool(search_playbook)]

@@ -96,3 +96,72 @@ def test_mapping_types():
     assert props["process"]["properties"]["pid"]["type"] == "long"
     assert props["process"]["properties"]["cmdline"]["type"] == "text"
     assert "keyword" in props["process"]["properties"]["cmdline"]["fields"]
+
+
+# ---------------------------------------------------------------- get_network_connections (2일차 D2-7)
+def _net_event(i, host, ts, ip, port=443, pid=7001, name="powershell.exe", out=300):
+    return {"event_id": f"evt-net-{i:04d}", "ts": ts, "host": host, "type": "network",
+            "process": {"pid": pid, "ppid": 1, "name": name, "cmdline": name, "parent_name": "explorer.exe",
+                        "signed": True, "user": "kim"},
+            "network": {"dst_ip": ip, "dst_port": port, "proto": "tcp", "bytes_out": out}}
+
+
+@pytest.fixture(scope="module")
+def net_hosts():
+    """WS-NET1: 30초 간격 비콘(6회) + 들쭉날쭉한 정상 통신 + 사내 통신. WS-NET2: 같은 IP를 다른 프로세스가 섞어 부름."""
+    evs = [_net_event(i, "WS-NET1", f"2026-11-16T10:{m:02d}:{s:02d}Z", "198.51.100.23")
+           for i, (m, s) in enumerate([(0, 0), (0, 30), (1, 0), (1, 30), (2, 0), (2, 30)])]
+    evs += [_net_event(10 + i, "WS-NET1", f"2026-11-16T10:{m:02d}:00Z", "203.0.113.10", pid=7002, name="chrome.exe")
+            for i, m in enumerate([0, 1, 5, 6, 20, 21])]                      # 간격이 불규칙한 정상 통신
+    evs += [_net_event(20, "WS-NET1", "2026-11-16T10:03:00Z", "10.0.0.5"),         # 사내 주소는 빠짐
+            _net_event(21, "WS-NET1", "2026-11-16T10:03:30Z", "192.168.1.9")]
+    evs += [_net_event(30 + i, "WS-NET2", f"2026-11-16T10:0{i}:00Z", "198.51.100.23", pid=8001) for i in range(6)]
+    evs += [_net_event(40, "WS-NET2", "2026-11-16T10:02:20Z", "198.51.100.23", port=8443, pid=8002, name="updater.exe")]
+    index_events(evs, get_client())
+    return evs
+
+
+def _conn(r, ip, pid=None):
+    return next(c for c in r["connections"] if c["dst_ip"] == ip and (pid is None or c["pid"] == pid))
+
+
+def test_network_connections_finds_periodic_beacon(net_hosts):
+    r = tools.get_network_connections("WS-NET1", minutes=60)
+    c = _conn(r, "198.51.100.23")
+    assert c["count"] == 6 and c["avg_interval_sec"] == 30.0 and c["looks_periodic"] is True
+    assert r["connections"][0]["dst_ip"] == "198.51.100.23"          # 규칙적인 통신이 맨 앞
+    assert _conn(r, "203.0.113.10")["looks_periodic"] is False        # 횟수가 같아도 불규칙하면 아님
+
+
+def test_network_connections_skips_internal_addresses(net_hosts):
+    r = tools.get_network_connections("WS-NET1", minutes=60)
+    ips = {c["dst_ip"] for c in r["connections"]}
+    assert "10.0.0.5" not in ips and "192.168.1.9" not in ips
+    assert r["internal_skipped"] == 2
+
+
+def test_network_connections_does_not_mix_processes(net_hosts):
+    r = tools.get_network_connections("WS-NET2", minutes=60)
+    assert _conn(r, "198.51.100.23", pid=8001)["looks_periodic"] is True   # 다른 프로세스(8002)가 간격을 깨면 안 됨
+    assert _conn(r, "198.51.100.23", pid=8002)["count"] == 1
+
+
+def test_network_connections_samples_have_event_id(net_hosts):
+    r = tools.get_network_connections("WS-NET1", minutes=60)
+    c = _conn(r, "198.51.100.23")
+    assert 1 <= len(c["samples"]) <= tools.NETWORK_SAMPLES
+    assert all(s["event_id"].startswith("evt-net-") for s in c["samples"])
+
+
+def test_network_connections_window_and_empty(net_hosts):
+    r = tools.get_network_connections("WS-NET1", minutes=1, around_ts="2026-11-16T10:02:30Z")
+    assert _conn(r, "198.51.100.23")["count"] == 3                         # 10:01:30 ~ 10:02:30
+    none = tools.get_network_connections("WS-NOPE")
+    assert none["connections"] == [] and "찾을 수 없습니다" in none["note"]
+
+
+def test_network_connections_rejects_bad_input(net_hosts):
+    with pytest.raises(ValueError):
+        tools.get_network_connections("WS-NET1", minutes=0)
+    with pytest.raises(ValueError):
+        tools.get_network_connections("WS-NET1", minutes=5, around_ts="2026-11-16T10:00:00")
