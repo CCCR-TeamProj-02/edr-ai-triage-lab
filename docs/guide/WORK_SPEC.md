@@ -32,21 +32,21 @@
 
 | ✔ | 번호 | 작업 | 형태 | 담당 / 운전 | 볼 자료 | 결과물 | 완료 기준 |
 |---|---|---|---|---|---|---|---|
-| [ ] | D1-1 | 시작 전 확인: 역할 기록, 링크 메모 소개, Interrupts 질문 답 맞추기 | 👥 | | `prep/03` 6장, `DAY1` 0 | `teachback/day1.md` 맨 위 역할 | 도구 호출과 RAG의 차이를 둘 다 자기 말로 설명한다 |
+| [x] | D1-1 | 시작 전 확인: 역할 기록, 링크 메모 소개, Interrupts 질문 답 맞추기 | 👥 | | `prep/03` 6장, `DAY1` 0 | `teachback/day1.md` 맨 위 역할 | 도구 호출과 RAG의 차이를 둘 다 자기 말로 설명한다 |
 | [x] | D1-2 | 도구 계약 정하기 | 👥 | | `src/soc/mocks.py`, `DAY1` 1 | `docs/CONTRACT.md` (둘 다 이름) | 🔍 결과에 `event_id`, 📘 결과에 `source`가 있다고 합의했다 |
 | [x] | D1-3 | 인프라 0단계: `docker-compose.yml` 작성 | 👥 🔥 | 운전 🔍 / 출제 📘 | `INFRA_STAGES` 깨 보기 규칙, 0단계 | `docker-compose.yml`, `docs/RUNBOOK.md` | 둘 다 `curl localhost:9200`에 응답이 온다. 깨 보기 1개 이상을 진단 후 나눔까지 기록했다 |
-| [ ] | D1-4 | 데이터 관찰 | 👤 | 🔍 | `DAY1` 3-🔍-1 | `DECISIONS.md` 🔍 데이터 관찰 | `credential_dump`의 족보를 `pid` → `ppid`로 따라갔다 |
-| [ ] | D1-5 | 텔레메트리 인덱스 템플릿 (REC-1) | 👤 | 🔍 | `prep/03` 1장 | `index_template.py`, `DECISIONS.md` text vs keyword | 기록이 들어가고 개수를 확인했다 |
+| [x] | D1-4 | 데이터 관찰 | 👤 | 🔍 | `DAY1` 3-🔍-1 | `DECISIONS.md` 🔍 데이터 관찰 | `credential_dump`의 족보를 `pid` → `ppid`로 따라갔다 |
+| [x] | D1-5 | 텔레메트리 인덱스 템플릿 (REC-1) | 👤 | 🔍 | `prep/03` 1장 | `index_template.py`, `DECISIONS.md` text vs keyword | 기록이 들어가고 개수를 확인했다 |
 | [x] | D1-6 | 9개 PDF를 `fast`로 파싱해 보기 | 👤 | 📘 | `data/kb/README.md` | `DECISIONS.md` 📘 파싱 관찰 | 03·06·09에 대한 예상이 맞았는지 적었다 |
 | [x] | D1-7 | 파싱과 청킹 (DOC-1~3) | 👤 | 📘 | `prep/03` 2장 | `parse.py`, `chunk.py` | `ingest --dry-run`에서 머리말·꼬리말이 빠지고 출처 정보가 붙어 있다 |
 | [x] | D1-8 | **중간 나눔:** 각자 준비 → 설명과 질문 → 계약 변경 여부 결정 | 👤 → 👥 | 🔍 먼저 설명 | `DAY1` 3-👥 | `teachback/day1.md` 중간 나눔, `CONTRACT.md` 변경 이력 | 둘 다 상대 결과의 필드 이름과 출처 정보를 말할 수 있다. 변경 여부("변경 없음" 포함)가 기록돼 있다 |
-| [ ] | D1-9 | 조사 도구 3개 (REC-2~4) | 👤 | 🔍 | `DAY1` 3-🔍-3 | `tools.py` | `pytest tests/test_telemetry_tools.py` 통과 |
-| [ ] | D1-10 | 고장 예상표 확인, 도구 결과를 사람이 먼저 읽기 | 👤 | 🔍 | `prep/02` 9-2 | 고장 예상표에 결과 덧붙임 | 01 6장 빈칸 "① 조사"를 내 도구로 찾을 수 있다 |
+| [x] | D1-9 | 조사 도구 3개 (REC-2~4) | 👤 | 🔍 | `DAY1` 3-🔍-3 | `tools.py` | `pytest tests/test_telemetry_tools.py` 통과 |
+| [x] | D1-10 | 고장 예상표 확인, 도구 결과를 사람이 먼저 읽기 | 👤 | 🔍 | `prep/02` 9-2 | 고장 예상표에 결과 덧붙임 | 01 6장 빈칸 "① 조사"를 내 도구로 찾을 수 있다 |
 | [x] | D1-11 | 저장과 하이브리드 검색 (DOC-4~5) | 👤 | 📘 | `DAY1` 3-📘-3 | `index.py`, `search.py` | "격리는 누가 승인해?"에 01번이나 09번이 위에 나온다 |
 | [x] | D1-12 | RAG 평가 첫 측정 | 👤 | 📘 | `DAY1` 3-📘-4 | `DECISIONS.md` 첫 Recall@3 | 키워드만 / 벡터만 / 합친 것을 비교했다. 01 6장 빈칸 "③ 권고"를 내 검색으로 찾을 수 있다 |
-| [ ] | D1-13 | 에이전트 화이트보드 설계 (코드 금지) | 👥 | | `prep/01` 5장 그림 | `docs/ARCHITECTURE.md` v1 | 상태, 노드, 갈림길 3개를 정했다 |
+| [x] | D1-13 | 에이전트 화이트보드 설계 (코드 금지) | 👥 | | `prep/01` 5장 그림 | `docs/ARCHITECTURE.md` v1 | 상태, 노드, 갈림길 3개를 정했다 |
 | [x] | D1-14 | 에이전트 뼈대 (가짜 도구, 가짜 LLM) | 👥 | 조사 노드 📘 / 권고 노드 🔍 | `DAY1` 4-2 | `graph.py`, `nodes.py`, Mermaid 그림 | `pytest tests/test_graph_skeleton.py` 통과, 경로가 끝까지 찍힌다 |
-| [ ] | D1-15 | 티치백 | 👥 | | `DAY1` 5 | `teachback/day1.md` | 질문 3개, 못 답한 질문을 2일차 할 일로 옮겼다 |
+| [x] | D1-15 | 티치백 | 👥 | | `DAY1` 5 | `teachback/day1.md` | 질문 3개, 못 답한 질문을 2일차 할 일로 옮겼다 |
 
 ## 2일차: 에이전트를 완성하고, 점수를 재고, 서버에 한 단계씩 올리며 깨 본다
 
@@ -55,7 +55,7 @@
 | [ ] | D2-1 | 어제 못 답한 질문 해결 | 👥 | | `teachback/day1.md` | | 질문 목록이 비었다 |
 | [x] | D2-2 | 가짜 도구를 진짜로 (덜 된 도구는 가짜로 두고 진행) | 👥 | | `DAY2` 1-1 | 계약 위반 시 `CONTRACT.md` 변경 이력 | `credential_dump` 알림의 판정 근거에 실제 `event_id`가 있다 |
 | [x] | D2-3 | 가드레일 (G-1, G-2) | 👥 | 운전 📘 | `prep/01` 4장 | `guardrail.py`, `DECISIONS.md` 가드레일 실패 처리 | `pytest tests/test_guardrail.py` 통과 |
-| [ ] | D2-4 | 사람 승인과 상태 저장 (H-1, H-2) | 👥 | 운전 🔍 | `prep/03` 3장, `prep/01b` | `nodes.py`, `checkpoint.py` | 격리 권고에서 `pending_approval` → 승인하면 `completed`, API를 껐다 켜도 이어진다 |
+| [x] | D2-4 | 사람 승인과 상태 저장 (H-1, H-2) | 👥 | 운전 🔍 | `prep/03` 3장, `prep/01b` | `nodes.py`, `checkpoint.py` | 격리 권고에서 `pending_approval` → 승인하면 `completed`, API를 껐다 켜도 이어진다 |
 | [x] | D2-5 | 평가 기준점 (내 PC, 교차 작업 전) | 👥 | | `prep/02` 5장 | `DECISIONS.md` 기준점 | `rag_eval`, `agent_eval --n 12` 결과가 기록돼 있다 |
 | [x] | D2-6 | 틀린 사례 2개 분석 | 👥 | 🔍 도구 쪽 / 📘 검색 쪽 | `prep/02` 5장 | `DECISIONS.md` 틀린 사례 분석 | 사례마다 틀린 단계(도구 / RAG / 판정)를 적었다 |
 | [ ] | D2-7 | 교차: `get_network_connections` 도구 추가 | 🔁 | 📘 → 🔍 영역, 리뷰 🔍 | `DAY2` 3 | `tools.py`, `CONTRACT.md` 표와 변경 이력 | 🔍가 바뀐 부분을 설명할 수 있다 |
