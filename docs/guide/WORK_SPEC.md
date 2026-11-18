@@ -60,7 +60,7 @@
 | [x] | D2-6 | 틀린 사례 2개 분석 | 👥 | 🔍 도구 쪽 / 📘 검색 쪽 | `prep/02` 5장 | `DECISIONS.md` 틀린 사례 분석 | 사례마다 틀린 단계(도구 / RAG / 판정)를 적었다 |
 | [ ] | D2-7 | 교차: `get_network_connections` 도구 추가 | 🔁 | 📘 → 🔍 영역, 리뷰 🔍 | `DAY2` 3 | `tools.py`, `CONTRACT.md` 표와 변경 이력 | 🔍가 바뀐 부분을 설명할 수 있다 |
 | [x] | D2-8 | 교차: 청킹 실험 | 🔁 | 🔍 → 📘 영역, 리뷰 📘 | `DAY2` 3 | `DECISIONS.md` 청킹 + 교차 실험 | 기준점과 Recall@3을 비교했고, 최종 값은 📘가 정했다 |
-| [ ] | D2-9 | 02 셀프 체크 | 👥 | | `prep/02` 셀프 체크 | | 4문항에 둘이 답했다 |
+| [x] | D2-9 | 02 셀프 체크 | 👥 | | `prep/02` 셀프 체크 | | 4문항에 둘이 답했다 |
 | [ ] | D2-10 | 인프라 1단계: 팀 서버 접속, `bootstrap.sh`, k3s, 첫 Deployment | 👥 🔥 | 운전 📘 / 출제 🔍 | `INFRA_STAGES` 1단계 | `infra/scripts/bootstrap.sh`, `infra/k8s/10~11` | 필수 깨 보기 **1-1** 진단 (진단 후 나눔까지), RUNBOOK 기록 |
 | [ ] | D2-11 | 용량 산정 | 👥 | 주도 🔍 / 검토 📘 | `docs/CAPACITY.md` | `CAPACITY.md` | 2단계 시작 전에 서버 사양(`nproc`, `free -h`) 기준으로 계산했다 |
 | [ ] | D2-12 | 인프라 2단계: OpenSearch StatefulSet | 👥 🔥 | 운전 🔍 / 출제 📘 | `INFRA_STAGES` 2단계 | `infra/k8s/20` | 필수 깨 보기 **2-1** 진단 (진단 후 나눔까지), 파드를 지워도 데이터가 남는다 |
