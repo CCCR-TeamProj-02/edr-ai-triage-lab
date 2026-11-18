@@ -54,7 +54,7 @@
 |---|---|---|---|---|---|---|---|
 | [ ] | D2-1 | 어제 못 답한 질문 해결 | 👥 | | `teachback/day1.md` | | 질문 목록이 비었다 |
 | [ ] | D2-2 | 가짜 도구를 진짜로 (덜 된 도구는 가짜로 두고 진행) | 👥 | | `DAY2` 1-1 | 계약 위반 시 `CONTRACT.md` 변경 이력 | `credential_dump` 알림의 판정 근거에 실제 `event_id`가 있다 |
-| [ ] | D2-3 | 가드레일 (G-1, G-2) | 👥 | 운전 📘 | `prep/01` 4장 | `guardrail.py`, `DECISIONS.md` 가드레일 실패 처리 | `pytest tests/test_guardrail.py` 통과 |
+| [x] | D2-3 | 가드레일 (G-1, G-2) | 👥 | 운전 📘 | `prep/01` 4장 | `guardrail.py`, `DECISIONS.md` 가드레일 실패 처리 | `pytest tests/test_guardrail.py` 통과 |
 | [ ] | D2-4 | 사람 승인과 상태 저장 (H-1, H-2) | 👥 | 운전 🔍 | `prep/03` 3장, `prep/01b` | `nodes.py`, `checkpoint.py` | 격리 권고에서 `pending_approval` → 승인하면 `completed`, API를 껐다 켜도 이어진다 |
 | [ ] | D2-5 | 평가 기준점 (내 PC, 교차 작업 전) | 👥 | | `prep/02` 5장 | `DECISIONS.md` 기준점 | `rag_eval`, `agent_eval --n 12` 결과가 기록돼 있다 |
 | [ ] | D2-6 | 틀린 사례 2개 분석 | 👥 | 🔍 도구 쪽 / 📘 검색 쪽 | `prep/02` 5장 | `DECISIONS.md` 틀린 사례 분석 | 사례마다 틀린 단계(도구 / RAG / 판정)를 적었다 |
