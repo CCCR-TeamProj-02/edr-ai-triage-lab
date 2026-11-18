@@ -1,0 +1,31 @@
+# 인프라 5단계: 외부에서 API에 접속하게 합니다. k3s에 기본으로 들어 있는 Traefik이 Ingress를 읽어 라우팅합니다.
+#
+# 호스트 이름은 nip.io를 씁니다. `soc.1.201.110.71.nip.io`는 DNS가 자동으로 1.201.110.71로 풀립니다
+# (도메인을 따로 사려고 하지 않아도 됩니다). 서버 IP가 바뀌면 host도 바꿔야 합니다.
+#
+# 이름이 맞아야 연결됩니다:
+#   backend.service.name (api) = 11-api.yaml의 Service 이름
+#   backend.service.port.number (80) = 그 Service의 port (targetPort 8000이 아님)
+# 연결이 끊기면 증상이 다릅니다:
+#   host가 틀림           → Traefik의 "404 page not found"   (깨 보기 5-1)
+#   Service selector가 틀림 → "502/503" (Service는 있으나 연결된 Pod가 없음, 깨 보기 5-2)
+#
+# 주의: 이 API에는 아직 인증이 없습니다. 인터넷에 열려 있으니 실습이 끝나면 내리거나 접근을 제한하세요.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: api
+  namespace: soc
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: soc.1.201.110.71.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: api
+                port:
+                  number: 80
