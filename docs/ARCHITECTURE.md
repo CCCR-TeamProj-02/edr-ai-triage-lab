@@ -47,7 +47,7 @@ flowchart TD
 ### 노드
 | 노드 | 하는 일 | 읽는 상태 | 쓰는 상태 | 쓰는 도구 | 운전 |
 |---|---|---|---|---|---|
-| 조사 | LLM이 조사 도구 중 무엇을 부를지 정함 | `alert`, `messages` | `messages`, `trace`, `usage` | 🔍 조사 도구(`get_process_tree`, `get_process_activity`, `get_host_timeline`) | 📘 |
+| 조사 | LLM이 조사 도구 중 무엇을 부를지 정함 | `alert`, `messages` | `messages`, `trace`, `usage` | 🔍 조사 도구(`get_process_tree`, `get_process_activity`, `get_host_timeline`, `get_network_connections`) | 📘 |
 | 도구 실행 | 선택된 모드의 도구를 실행하고 결과의 `event_id`를 `seen_event_ids`에 수집. 도구 오류는 `error` 결과로 LLM에게 전달 | `messages` | `messages`, `seen_event_ids`, `tool_rounds`, `trace` | 위와 같음 | |
 | 판정 | 대화를 보고 악성/의심/정상 판정 (정해진 형식으로 출력) | `messages` | `verdict`, `trace`, `usage` | | |
 | 가드레일 | 인용한 근거가 도구 결과의 `seen_event_ids` 또는 알림의 `event_ids`에 있는지, 악성에 서로 다른 근거가 2개 이상인지 검사하도록 구현 예정 | `verdict`, `seen_event_ids`, `alert` | `guardrail`, `guardrail_log`, `guardrail_retries`, `messages`, `verdict`, `trace` | | 📘 |
@@ -57,7 +57,7 @@ flowchart TD
 
 ### 조사 도구와 저장소 연결
 - 실제 모드: 알림의 `host`·`pid`·`ts` → 조사 노드의 도구 선택 → REC-2~4 → OpenSearch의 `edr-events-*` 조회 → 요약된 기록과 `event_id`를 도구 실행 노드에 반환합니다. 인덱스 접두어는 `INDEX_EVENTS` 설정을 따릅니다.
-- 조사 도구는 프로세스 조회에 `host`와 PID를 함께 사용합니다. 부모·자식은 REC-2, 통신·파일 등의 후속 활동은 REC-3, PC의 시간 범위 조회는 REC-4가 담당합니다.
+- 조사 도구는 프로세스 조회에 `host`와 PID를 함께 사용합니다. 부모·자식은 REC-2, 통신·파일 등의 후속 활동은 REC-3, PC의 시간 범위 조회는 REC-4가 담당합니다. 주기적 외부 통신(C2 비콘) 요약은 2일차에 추가한 `get_network_connections`가 담당하며, 알림 시각을 기준으로 과거 구간의 외부 통신을 (프로세스, 목적지 IP)별로 묶어 규칙성(`looks_periodic`)을 알려 줍니다.
 - 테스트는 `test-edr-events-*`를 사용해 실습 기록과 분리합니다. mock 모드는 OpenSearch를 조회하지 않고 견본 결과를 반환합니다.
 - 도구 실행 노드는 반환된 근거 ID를 모으고, 가드레일은 그 ID와 알림에 포함된 근거 ID를 판정에 인용된 ID와 비교하도록 구현합니다.
 
