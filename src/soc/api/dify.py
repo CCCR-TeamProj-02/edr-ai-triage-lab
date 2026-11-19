@@ -28,9 +28,12 @@ class RetrievalRequest(BaseModel):
 
 def normalize_scores(hits: list[dict]) -> list[dict]:
     """우리 검색 점수(RRF 등)를 Dify가 쓰는 0~1 범위로 바꿉니다."""
-    # TODO[DIFY-1]: 가장 높은 점수를 1.0으로 맞춰 나머지를 비율로 바꿉니다 (점수가 모두 0이면 0).
     # 왜 그냥 쓰면 안 될까요? RRF 점수는 1/61 ≈ 0.016 근처라 Dify의 score_threshold(예: 0.5)에 모두 걸러집니다.
-    raise NotImplementedError("TODO[DIFY-1]")
+    max_score = max((hit["score"] for hit in hits), default=0)
+    return [
+        {**hit, "score": hit["score"] / max_score if max_score else 0.0}
+        for hit in hits
+    ]
 
 
 @router.post("/dify/retrieval")
