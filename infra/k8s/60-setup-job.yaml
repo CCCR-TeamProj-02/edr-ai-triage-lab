@@ -1,0 +1,56 @@
+# 인덱스 초기화 Job (인프라 6단계). 한 번 실행하고 끝나는 일이라 Deployment가 아니라 Job입니다.
+# `python -m soc.setup`은 템플릿 적용과 인덱스 생성을 "있으면 건너뛰는" 방식이라 여러 번 실행해도 안전합니다(멱등).
+#
+# Job의 spec은 만든 뒤 바꿀 수 없습니다 (깨 보기 6-3). 다시 실행하려면 지우고 다시 만듭니다:
+#   kubectl -n soc delete job setup --ignore-not-found && kubectl apply -f infra/k8s/60-setup-job.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: setup
+  namespace: soc
+spec:
+  # 실패해도 3번까지만 다시 시도합니다. 오타 같은 영구 실패를 끝없이 반복하지 않게 하는 상한입니다.
+  backoffLimit: 3
+  # 시작부터 5분 안에 못 끝내면 강제 종료합니다. 인덱스 몇 개 만드는 일이라 5분이면 충분합니다.
+  activeDeadlineSeconds: 300
+  # 끝나고 24시간 뒤에 자동 삭제합니다. 바로 지우면 완료 확인과 로그 확인을 못 합니다.
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels:
+        app: setup
+    spec:
+      # Never: 실패할 때마다 새 파드가 생겨 시도별 로그가 남습니다 (OnFailure는 같은 파드를 재시작해 로그가 섞입니다).
+      restartPolicy: Never
+      imagePullSecrets:
+        - name: ghcr-pull
+      initContainers:
+        # OpenSearch가 응답할 때까지 기다립니다. Job은 파드 순서 보장이 없어 먼저 뜨면 연결 실패로 시도 횟수를 낭비합니다.
+        - name: wait-opensearch
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              until wget -q -O /dev/null "$OPENSEARCH_URL/_cluster/health"; do
+                echo "OpenSearch 대기 중: $OPENSEARCH_URL"; sleep 3
+              done
+          envFrom:
+            - configMapRef:
+                name: app-config
+          resources:
+            requests: { cpu: "10m", memory: "16Mi" }
+            limits: { memory: "32Mi" }
+      containers:
+        - name: setup
+          image: ghcr.io/hanjyoon01/edr-ai-triage-api:0.1.0
+          imagePullPolicy: IfNotPresent
+          command: ["python", "-m", "soc.setup"]
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - secretRef:
+                name: app-secrets
+          resources:
+            requests: { cpu: "100m", memory: "128Mi" }
+            limits: { memory: "256Mi" }
