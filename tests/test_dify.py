@@ -19,3 +19,11 @@ def test_retrieval_endpoint():
     assert r.status_code == 200
     recs = r.json()["records"]
     assert recs and recs[0]["score"] == 1.0 and recs[0]["title"].endswith(".pdf")
+
+
+def test_retrieval_empty_query_returns_empty_records():
+    # Dify가 API를 저장할 때 빈 검색어로 검증한다. 500이 아니라 200과 빈 결과여야 한다.
+    c = TestClient(app)
+    for q in ["", "   "]:
+        r = c.post("/dify/retrieval", headers={"Authorization": "Bearer change-me"}, json={"query": q})
+        assert r.status_code == 200 and r.json() == {"records": []}
