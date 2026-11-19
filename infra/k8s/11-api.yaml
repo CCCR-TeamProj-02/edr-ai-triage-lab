@@ -35,7 +35,7 @@ spec:
         - name: ghcr-pull
       containers:
         - name: api
-          image: ghcr.io/hanjyoon01/edr-ai-triage-api:0.1.0   # 태그 오타 → ImagePullBackOff (깨 보기 1-1)
+          image: ghcr.io/cccr-teamproj-02/edr-ai-triage-lab:ee25bd7   # CI가 만든 이미지, 태그 = 커밋 7자리 (7단계). 태그 오타 → ImagePullBackOff (깨 보기 1-1)
           ports:
             - containerPort: 8000   # ③ Dockerfile의 uvicorn --port 8000
           # 3단계부터 설정은 ConfigMap(31-config.yaml), 비밀은 Secret(secrets.sh)에서 받습니다.
