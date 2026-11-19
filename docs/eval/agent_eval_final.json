@@ -1,0 +1,367 @@
+{
+ "summary": {
+  "n": 12,
+  "판정 정확도": 0.5,
+  "지어낸 근거 비율": 0.0,
+  "승인 요청 비율": 0.917,
+  "응답 속도 평균(초)": 17.89,
+  "응답 속도 최대(초)": 23.66,
+  "알림당 비용(USD)": 0.00438
+ },
+ "rows": [
+  {
+   "alert_id": "al-e44004f618a7",
+   "rule_id": "R009",
+   "title": "PowerShell 실행 정책 우회(Bypass)",
+   "scenario": "it_inventory_script",
+   "expected": "benign",
+   "verdict": "malicious",
+   "correct": false,
+   "fabricated": false,
+   "approval_asked": true,
+   "sec": 17.45,
+   "cost_usd": 0.003449,
+   "tokens": {
+    "output_tokens": 1016,
+    "input_tokens": 18931,
+    "llm_calls": 5
+   },
+   "reasoning": "PowerShell이 'ExecutionPolicy Bypass' 옵션으로 실행되었고, 외부 IP(203.0.113.40)와의 네트워크 통신이 발생했습니다. 이는 일반적으로 악성 행위로 간주되며, 스크립트 내용이 IT 자산 수집이라는 점에서 의심스러운 행동이 확인되었습니다. 두 개 이상의 독립적인 근거 이벤트가 존재하여 악성으로 판단합니다.",
+   "trace": [
+    "조사",
+    "도구",
+    "조사",
+    "도구",
+    "조사",
+    "판정",
+    "가드레일",
+    "권고",
+    "승인",
+    "리포트"
+   ]
+  },
+  {
+   "alert_id": "al-aa70d6243178",
+   "rule_id": "R007",
+   "title": "backupagent.exe가 20개 파일을 단시간에 이름 변경 (암호화 의심)",
+   "scenario": "backup_rename",
+   "expected": "benign",
+   "verdict": "malicious",
+   "correct": false,
+   "fabricated": false,
+   "approval_asked": true,
+   "sec": 23.02,
+   "cost_usd": 0.006111,
+   "tokens": {
+    "output_tokens": 1567,
+    "llm_calls": 4,
+    "input_tokens": 34473
+   },
+   "reasoning": "backupagent.exe가 단시간에 30개의 파일 이름을 변경하는 활동은 일반적인 백업 프로세스의 범위를 넘어서는 것으로, 암호화 공격의 징후로 해석될 수 있습니다. 이로 인해 두 개 이상의 독립적인 근거 이벤트가 발생하여 악성으로 판단됩니다.",
+   "trace": [
+    "조사",
+    "도구",
+    "조사",
+    "판정",
+    "가드레일",
+    "권고",
+    "승인",
+    "리포트"
+   ]
+  },
+  {
+   "alert_id": "al-094acf3e1f0a",
+   "rule_id": "R007",
+   "title": "backupagent.exe가 20개 파일을 단시간에 이름 변경 (암호화 의심)",
+   "scenario": "backup_rename",
+   "expected": "benign",
+   "verdict": "malicious",
+   "correct": false,
+   "fabricated": false,
+   "approval_asked": true,
+   "sec": 21.67,
+   "cost_usd": 0.006054,
+   "tokens": {
+    "output_tokens": 1302,
+    "llm_calls": 4,
+    "input_tokens": 35151
+   },
+   "reasoning": "backupagent.exe가 SYSTEM 사용자에 의해 실행되어 20개의 파일을 단시간에 이름 변경하는 작업을 수행했습니다. 이는 일반적인 백업 작업의 범위를 넘어서는 행동으로, 암호화와 관련된 악성 행위로 판단됩니다. 두 개 이상의 독립적인 근거 이벤트가 존재하여 악성으로 판별되었습니다.",
+   "trace": [
+    "조사",
+    "도구",
+    "조사",
+    "판정",
+    "가드레일",
+    "권고",
+    "승인",
+    "리포트"
+   ]
+  },
+  {
+   "alert_id": "al-a30de1f7496b",
+   "rule_id": "R009",
+   "title": "PowerShell 실행 정책 우회(Bypass)",
+   "scenario": "it_inventory_script",
+   "expected": "benign",
+   "verdict": "malicious",
+   "correct": false,
+   "fabricated": false,
+   "approval_asked": true,
+   "sec": 23.66,
+   "cost_usd": 0.004593,
+   "tokens": {
+    "output_tokens": 873,
+    "llm_calls": 4,
+    "input_tokens": 27127
+   },
+   "reasoning": "PowerShell이 실행 정책을 우회하여 스크립트를 실행하고, 외부 IP로 네트워크 통신을 수행한 두 개의 독립적인 근거 이벤트가 존재합니다. 이는 악성 행위로 판단됩니다.",
+   "trace": [
+    "조사",
+    "도구",
+    "조사",
+    "판정",
+    "가드레일",
+    "권고",
+    "승인",
+    "리포트"
+   ]
+  },
+  {
+   "alert_id": "al-7d833405272f",
+   "rule_id": "R003",
+   "title": "comsvcs.dll MiniDump를 이용한 LSASS 메모리 덤프 의심",
+   "scenario": "credential_dump",
+   "expected": "malicious",
+   "verdict": "suspicious",
+   "correct": false,
+   "fabricated": false,
+   "approval_asked": true,
+   "sec": 15.29,
+   "cost_usd": 0.004572,
+   "tokens": {
+    "output_tokens": 936,
+    "llm_calls": 4,
+    "input_tokens": 26734
+   },
+   "reasoning": "rundll32.exe가 comsvcs.dll을 사용하여 LSASS 메모리 덤프를 생성하는 것은 일반적인 정상 작업이 아니며, 이는 의심스러운 행동으로 간주됩니다. 이 프로세스는 SYSTEM 권한으로 실행되었고, 사용자 kim에 의해 시작되었습니다. 그러나 추가적인 악성 행위의 근거가 부족하여 '의심스러운'으로 판정합니다.",
+   "trace": [
+    "조사",
+    "도구",
+    "조사",
+    "판정",
+    "가드레일",
+    "권고",
+    "승인",
+    "리포트"
+   ]
+  },
+  {
+   "alert_id": "al-4240c625b52a",
+   "rule_id": "R004",
+   "title": "Run 레지스트리 키에 자동 실행 등록",
+   "scenario": "persistence_runkey",
+   "expected": "malicious",
+   "verdict": "malicious",
+   "correct": true,
+   "fabricated": false,
+   "approval_asked": true,
+   "sec": 16.88,
+   "cost_usd": 0.004758,
+   "tokens": {
+    "output_tokens": 967,
+    "input_tokens": 27852,
+    "llm_calls": 5
+   },
+   "reasoning": "powershell.exe가 updater.exe 파일을 생성하고 이를 자동 실행하도록 레지스트리에 등록한 것은 의심스러운 행동입니다. 이는 악성코드의 전형적인 Persistence 기법으로 보이며, 두 개의 독립적인 근거 이벤트가 존재하여 악성으로 판단됩니다.",
+   "trace": [
+    "조사",
+    "도구",
+    "조사",
+    "도구",
+    "조사",
+    "판정",
+    "가드레일",
+    "권고",
+    "승인",
+    "리포트"
+   ]
+  },
+  {
+   "alert_id": "al-f15665f4c8d8",
+   "rule_id": "R007",
+   "title": "invoice_viewer.exe가 20개 파일을 단시간에 이름 변경 (암호화 의심)",
+   "scenario": "ransomware",
+   "expected": "malicious",
+   "verdict": "malicious",
+   "correct": true,
+   "fabricated": false,
+   "approval_asked": true,
+   "sec": 19.04,
+   "cost_usd": 0.006241,
+   "tokens": {
+    "output_tokens": 1353,
+    "llm_calls": 4,
+    "input_tokens": 36194
+   },
+   "reasoning": "invoice_viewer.exe가 20개 이상의 파일을 단시간에 이름 변경하여 '.locked' 확장자를 추가하는 행동을 보였습니다. 이는 일반적으로 랜섬웨어의 전형적인 행동으로, 파일을 암호화하려는 시도로 해석될 수 있습니다. 또한, vssadmin.exe를 사용하여 그림자 복사본을 삭제하는 것은 추가적인 악성 행위로 간주됩니다. 이러한 두 가지 독립적인 근거가 존재하므로, 이 사건은 악성으로 판별됩니다.",
+   "trace": [
+    "조사",
+    "도구",
+    "조사",
+    "판정",
+    "가드레일",
+    "권고",
+    "승인",
+    "리포트"
+   ]
+  },
+  {
+   "alert_id": "al-01e4dcec9bc5",
+   "rule_id": "R005",
+   "title": "PsExec 원격 실행",
+   "scenario": "lateral_psexec",
+   "expected": "malicious",
+   "verdict": "suspicious",
+   "correct": false,
+   "fabricated": false,
+   "approval_asked": false,
+   "sec": 11.7,
+   "cost_usd": 0.001384,
+   "tokens": {
+    "output_tokens": 803,
+    "llm_calls": 4,
+    "input_tokens": 6018
+   },
+   "reasoning": "PsExec를 사용하여 원격으로 프로세스를 실행한 기록이 있으며, 이는 일반적으로 의심스러운 활동으로 간주됩니다. 그러나 추가적인 악성 활동을 나타내는 독립적인 근거 이벤트가 부족하여 '의심'으로 판별하였습니다.",
+   "trace": [
+    "조사",
+    "도구",
+    "조사",
+    "판정",
+    "가드레일",
+    "권고",
+    "승인",
+    "리포트"
+   ]
+  },
+  {
+   "alert_id": "al-3397dffcf023",
+   "rule_id": "R005",
+   "title": "PsExec 원격 실행",
+   "scenario": "lateral_psexec",
+   "expected": "malicious",
+   "verdict": "malicious",
+   "correct": true,
+   "fabricated": false,
+   "approval_asked": true,
+   "sec": 17.3,
+   "cost_usd": 0.004126,
+   "tokens": {
+    "output_tokens": 749,
+    "llm_calls": 4,
+    "input_tokens": 24512
+   },
+   "reasoning": "`psexec.exe`가 `cmd.exe`를 원격으로 실행하고, 외부 IP(`10.0.2.10:445`)에 연결을 시도한 것은 악성 행위로 판단됩니다. 두 개의 독립적인 근거 이벤트(`psexec.exe` 실행 및 네트워크 연결)가 존재하여 악성으로 분류됩니다.",
+   "trace": [
+    "조사",
+    "도구",
+    "조사",
+    "판정",
+    "가드레일",
+    "권고",
+    "승인",
+    "리포트"
+   ]
+  },
+  {
+   "alert_id": "al-1afbbf06fac3",
+   "rule_id": "R004",
+   "title": "Run 레지스트리 키에 자동 실행 등록",
+   "scenario": "persistence_runkey",
+   "expected": "malicious",
+   "verdict": "malicious",
+   "correct": true,
+   "fabricated": false,
+   "approval_asked": true,
+   "sec": 19.75,
+   "cost_usd": 0.004512,
+   "tokens": {
+    "output_tokens": 791,
+    "llm_calls": 4,
+    "input_tokens": 26915
+   },
+   "reasoning": "'powershell.exe'가 'updater.exe' 파일을 생성하고, 이를 레지스트리에 자동 실행 등록한 것은 악성 행위로 판단됩니다. 두 개의 독립적인 근거 이벤트가 존재하며, 이는 서로 다른 단계의 공격 흐름을 나타냅니다.",
+   "trace": [
+    "조사",
+    "도구",
+    "조사",
+    "판정",
+    "가드레일",
+    "권고",
+    "승인",
+    "리포트"
+   ]
+  },
+  {
+   "alert_id": "al-4343c39ad371",
+   "rule_id": "R001",
+   "title": "인코딩된 PowerShell 명령 실행",
+   "scenario": "phishing_macro_powershell",
+   "expected": "malicious",
+   "verdict": "malicious",
+   "correct": true,
+   "fabricated": false,
+   "approval_asked": true,
+   "sec": 17.06,
+   "cost_usd": 0.005433,
+   "tokens": {
+    "output_tokens": 1047,
+    "input_tokens": 32031,
+    "llm_calls": 5
+   },
+   "reasoning": "PowerShell이 인코딩된 명령을 실행하고, 외부 IP(198.51.100.23)와 여러 차례 통신을 시도했습니다. 이는 악성 행위로 간주되며, 서로 독립적인 근거 이벤트가 두 개 이상 존재하여 악성으로 판별됩니다.",
+   "trace": [
+    "조사",
+    "도구",
+    "조사",
+    "도구",
+    "조사",
+    "판정",
+    "가드레일",
+    "권고",
+    "승인",
+    "리포트"
+   ]
+  },
+  {
+   "alert_id": "al-3a04c6fef7b1",
+   "rule_id": "R005",
+   "title": "PsExec 원격 실행",
+   "scenario": "lateral_psexec",
+   "expected": "malicious",
+   "verdict": "malicious",
+   "correct": true,
+   "fabricated": false,
+   "approval_asked": true,
+   "sec": 11.88,
+   "cost_usd": 0.001348,
+   "tokens": {
+    "output_tokens": 736,
+    "llm_calls": 4,
+    "input_tokens": 6042
+   },
+   "reasoning": "PsExec 도구가 원격으로 실행되었고, 그 결과로 cmd.exe가 생성되었습니다. 두 개의 독립적인 이벤트가 발생하여 악성으로 판단됩니다.",
+   "trace": [
+    "조사",
+    "도구",
+    "조사",
+    "판정",
+    "가드레일",
+    "권고",
+    "승인",
+    "리포트"
+   ]
+  }
+ ]
+}
