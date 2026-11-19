@@ -40,6 +40,10 @@ def normalize_scores(hits: list[dict]) -> list[dict]:
 def retrieval(req: RetrievalRequest, authorization: str = Header(default="")):
     if authorization != f"Bearer {settings.dify_api_key}":
         raise HTTPException(status_code=403, detail={"error_code": 1002, "error_msg": "인증 실패"})
+    # Dify는 External Knowledge API를 저장할 때 빈 검색어로 검증 요청을 보냅니다.
+    # 빈 글을 임베딩하면 OpenAI가 400을 내서 500이 되므로, 검색하지 않고 빈 결과를 돌려줍니다.
+    if not req.query.strip():
+        return {"records": []}
     from ..agent.toolset import search_playbook_fn
 
     hits = normalize_scores(search_playbook_fn()(req.query, req.retrieval_setting.top_k))
