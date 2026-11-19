@@ -13,6 +13,13 @@ metadata:
   namespace: soc
 spec:
   replicas: 1
+  # 롤링 업데이트 중에도 기존 파드를 먼저 내리지 않습니다 (인프라 7단계, 깨 보기 7-1).
+  # 새 파드가 Ready가 될 때까지 옛 파드가 서비스를 계속 받습니다.
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   selector:
     matchLabels:
       app: api                      # ①
