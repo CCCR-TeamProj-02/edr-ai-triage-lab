@@ -293,3 +293,48 @@ kubectl -n soc get events --sort-by=.lastTimestamp | tail -20
 - **고장 예상표와 비교:** 새 파드가 정상 준비 상태가 되지 못해 교체가 완료되지 않는 동안 기존 파드가 서비스를 유지한다는 기대를 확인했다. 외부 응답 200만으로 새 배포 성공을 판단할 수 없으며, 새 파드 상태와 rollout 상태를 함께 봐야 한다.
 - **재발 방지·확인 범위:** 로그가 비어 있으면 describe의 Command, Last State, Exit Code, Events를 확인한다. 배포 전 정상 이미지·revision을 기록하고 배포 후 rollout과 외부 health/ready 응답을 확인한다. kubectl로 바꾼 설정은 Git의 YAML에 자동 반영되지 않으므로 배포 매니페스트와 실제 설정을 별도로 맞춘다. 이번 확인은 API 배포·롤백 범위이며 Dify 실제 연결·검색 성공까지 의미하지 않는다.
 - **진단 후 나눔:** 팀원이 장애를 넣고 기록 담당이 상태·로그·종료 코드를 확인해 롤백했다. 나눔은 2026-11-19에 했다. 가장 오래 걸린 지점과 설명한 내용은 이 기록에 적지 않았다.
+
+### [D3-7-1] OpenSearch Service selector 오타로 외부가 모두 503 (D3-7 · 2026-11-19 · 출제: 📘 한재윤(Claude 보조) · 진단·복구: 🔍 박찬솔)
+- **환경:** k3s `soc` 네임스페이스. 정상일 때 Service `opensearch`(ClusterIP 10.43.15.152, 9200)는 selector `app: opensearch`로 파드 `opensearch-0`(10.42.0.15)에 연결되고, 외부 `/healthz`·`/readyz`는 200이다. 종합 드릴이라 진단자에게는 몇 단계 문제인지 알리지 않았다.
+- **장애 투입:** 출제자가 Service `opensearch`의 selector를 `app: opensearh`(오타)로 바꿨다(`kubectl patch`). StatefulSet 파드, PVC, 데이터, Secret, ConfigMap은 건드리지 않았다. 정상 설정(Service YAML, EndpointSlice, 파드 목록, `/readyz` 응답)은 투입 전에 기록해 출제자 PC에 보관했다(서버에 두면 단서가 되므로 서버에는 두지 않았다). 투입은 14:17~14:19 KST경이고, 진단 시작·종료 시각과 복구까지 걸린 시간은 측정하지 못했다.
+- **한 번 더 만진 이유:** selector만 바꾸면 증상이 바로 나타나지 않았다. 이미 열려 있던 연결은 Service 변경 뒤에도 계속 동작해서 외부 `/healthz`·`/readyz`가 200이고 `worker`·`generator` 로그도 정상이었다(EndpointSlice는 이미 비어 있었다). 그래서 `api` 파드를 삭제하고 `worker`·`generator`를 rollout restart해 새 연결이 만들어지게 했다. 이 추가 조작이 진단자가 보는 파드 이력(재시작 횟수, 파드 이름)에 섞여 있다.
+- **증상 (진단자에게 알려 준 것):** 외부 `/healthz`, `/readyz`, `/alerts`가 모두 **503 `no available server`**, 알림 처리가 진행되지 않음.
+- **출제자가 확인한 증거 (바깥 → 안쪽):**
+  ```text
+  $ curl http://soc.1.201.110.71.nip.io/healthz          -> 503 no available server    (readyz, alerts도 같음)
+
+  $ kubectl -n soc get pods
+  api-b78459cf4-ws6gx         0/1  Running  1 (16s ago)   <- 파드는 Running인데 Ready가 아니고 재시작함
+  worker-79b874fc48-c78mc     0/1  Running  0             <- 새 워커도 Ready 아님
+  generator-d5c6884b7-m2ncr   1/1  Running  0
+  opensearch-0                1/1  Running  0             <- OpenSearch 자체는 정상
+  postgres-0                  1/1  Running  0
+
+  $ kubectl -n soc logs deploy/generator --tail=3
+  urllib3.exceptions.ConnectTimeoutError: ... host='opensearch', port=9200 ... Connection to opensearch timed out. (connect timeout=30)
+
+  $ kubectl -n soc get endpointslices -l kubernetes.io/service-name=opensearch
+  opensearch-5kh9c   IPv4   <unset>   <unset>              <- 연결된 파드 0개
+  $ kubectl -n soc get svc opensearch -o jsonpath='{.spec.selector}'
+  {"app":"opensearh"}                                      <- 오타
+  ```
+- **원인:** Service `opensearch`의 selector(`app: opensearh`)가 파드 label(`app: opensearch`)과 달라 연결 대상이 0개가 됐다(EndpointSlice 비어 있음). `api`는 시작할 때 OpenSearch에 연결하려다 `opensearch:9200`에서 타임아웃이 나 readiness(`/readyz`)가 통과하지 못했고, 연결을 기다리는 동안 liveness도 실패해 재시작을 반복했다. Ready인 `api` 파드가 없어 Ingress(Traefik)가 `no available server`를 돌려줬다. OpenSearch 파드, 데이터, Ingress, `api` 코드는 모두 정상이었다.
+- **5-2와의 차이:** 5-2는 `api` Service의 selector 오타라 `api` 파드는 정상 기동했다. 이번에는 **API 앞이 아니라 API가 의존하는 Service**(`opensearch`)가 깨져서, 외부 503의 원인이 두 단계 안쪽(`api` 파드의 시작 실패)에 있고 그 원인은 한 단계 더 안쪽(OpenSearch Service)에 있다.
+- **진단자의 결론 (전달받은 내용):** "Service selector 오타로 연결 대상이 없어졌습니다. API가 OpenSearch에 연결하지 못해 시작을 완료하지 못했습니다. selector만 정상 값으로 복구하겠습니다." 어느 Service인지 이름은 말하지 않았다.
+- **조치:** selector만 정상 값으로 되돌린다. 파드와 데이터는 지우지 않는다.
+  ```bash
+  kubectl -n soc patch svc opensearch -p '{"spec":{"selector":{"app":"opensearch"}}}'
+  kubectl -n soc get endpointslices -l kubernetes.io/service-name=opensearch   # ENDPOINTS에 10.42.0.15:9200이 보여야 함
+  kubectl -n soc get pods                                                        # api, worker, generator가 1/1 Running
+  curl -i http://soc.1.201.110.71.nip.io/readyz                                  # 200, opensearch·postgres true
+  ```
+- **복구 확인 (출제자가 읽기 전용으로 확인):** selector `{"app":"opensearch"}`, EndpointSlice `10.42.0.15:9200`, `api`·`generator`·`worker`·`opensearch-0`·`postgres-0` 모두 `1/1 Running`, 외부 `/healthz` 200, `/readyz` 200(`opensearch`·`postgres` true). `/stats`는 `new 0`, `completed 126`, `pending_approval 880`, `failed 1`(드릴 이전부터 있던 1건). 복구 시각은 기록하지 않았다.
+- **장애 뒤에 남은 것:** 재시작 횟수가 `api` 6회, `generator` 3회, `worker` 3회로 늘었다(OpenSearch 연결을 기다리다 liveness가 실패해 반복 재시작). 정상 기준은 `generator` 1회(드릴 이전), 나머지 0회였다. 장애 동안 `generator`가 OpenSearch에 쓰지 못해 그 구간의 이벤트는 비어 있다. 데이터를 삭제하지는 않았다.
+- **이해할 점:** 파드가 모두 `Running`이어도 `READY 0/1`이면 서비스를 받지 못한다. 외부가 503이면 바깥에서 안쪽으로 Ingress → Service/EndpointSlice → 파드 Ready → 파드 로그 → 의존하는 Service 순으로 내려간다. `api`의 EndpointSlice가 비어 있는 이유가 selector 오타가 아니라 파드가 Ready가 아니어서일 수 있다는 점이 5-2와 갈리는 지점이다. 또 Service를 고쳐도 이미 열린 연결은 바로 바뀌지 않으므로 증상이 늦게 나타나거나 늦게 사라질 수 있다.
+- **진단 후 나눔** (깨 보기 규칙 5~6번)
+  - 진단자: 가장 오래 걸린 지점과 이유: (나눈 뒤 작성)
+  - 출제자: 나라면 어디부터 봤을지: (나눈 뒤 작성)
+  - 다음에 같은 증상을 보면 처음 칠 명령: (나눈 뒤 작성. 후보: `kubectl -n soc get endpointslices` — 외부가 503일 때 `api`와 `opensearch` 두 Service에 연결된 파드가 있는지 한 번에 보임)
+- **재발 방지:** Service 이름표(label)는 손으로 치지 않고 매니페스트에서 복사해 쓴다. Service를 바꾼 뒤에는 `get endpointslices`로 파드가 연결됐는지, `get pods`에서 READY가 `1/1`인지 확인한다. 의존하는 Service가 깨지면 `api`가 시작하지 못한다는 점을 기억하고, 외부 503이면 `api`뿐 아니라 `opensearch`, `postgres` Service의 EndpointSlice도 함께 본다.
+- **미확인:** 진단자가 실제로 걸었던 경로와 가장 오래 걸린 지점은 이 기록에 없다(진단 과정을 출제자가 지켜보지 못했다). `api` 파드를 삭제하고 워커·생성기를 재시작한 조작이 진단 난이도에 준 영향도 확인하지 못했다.
+- **고장 예상표와 비교:** (나눈 뒤 02 문서 9-2와 대조해 작성)
