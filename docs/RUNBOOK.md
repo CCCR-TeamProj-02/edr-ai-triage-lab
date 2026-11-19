@@ -217,3 +217,45 @@ kubectl -n soc get events --sort-by=.lastTimestamp | tail -20
 - **재발 방지:** 한 줄씩 짚는 순서는 외부 응답 코드 → 파드 상태·label → Service selector → EndpointSlice. 이름표(label)는 손으로 치지 않고 매니페스트에서 복사해 쓰고, Service를 바꾼 뒤에는 `get endpointslices`로 파드가 연결됐는지 확인한다.
 - **미확인:** 외부에서 승인 API(`POST /approvals/{alert_id}`) 호출은 이 기록 시점에 직접 확인하지 못했다(`/healthz`·`/readyz`·`GET /alerts/{id}` 조회까지만 확인).
 - **고장 예상표와 비교:** (나눈 뒤 02 문서 9-2와 대조해 작성)
+
+### [6-1] Job의 OPENSEARCH_URL 오타로 setup Job이 실패 (2026-11-19 · 출제: 🔍 박찬솔 · 진단: 📘 한재윤(Claude 보조) · 복구: 📘)
+- **환경:** k3s `soc` 네임스페이스. 정상일 때 `setup` Job은 `soc.setup`을 실행해 OpenSearch 인덱스를 준비하고 `Complete 1/1`(약 7초)로 끝난다. 설정은 ConfigMap `app-config`의 `OPENSEARCH_URL=http://opensearch:9200`.
+- **장애 투입:** 출제자가 실습용 Job `setup-break61`을 따로 만들고, 본 컨테이너의 `env`에 `OPENSEARCH_URL=http://opensearch-typo:9200`을 직접 넣었다. 기존 `setup` Job과 ConfigMap은 건드리지 않았다. 투입 시각은 기록하지 않았고, 복구까지 걸린 시간은 측정하지 못했다.
+- **증상:** `setup-break61`이 `Running 0/1`인 채로 시도할 때마다 새 파드가 `Error`로 끝난다(`backoffLimit: 3`이라 시도가 끝나면 `BackoffLimitExceeded`). 파드는 `restartPolicy: Never`라 시도별로 따로 남는다.
+- **확인 명령과 출력 (바깥 → 안쪽 순서):**
+  ```text
+  $ kubectl -n soc get jobs,pods
+  job.batch/setup          Complete   1/1           7s
+  job.batch/setup-break61  Running    0/1           56s
+  pod/setup-break61-bkgmd  0/1   Error   0   56s
+  pod/setup-break61-s7drk  0/1   Error   0   44s
+  pod/setup-break61-gpdrz  0/1   Error   0   23s          <- 시도마다 새 파드, 모두 Error
+
+  $ kubectl -n soc logs pod/setup-break61-bkgmd -c setup      (세 파드 모두 같은 마지막 줄)
+  opensearchpy.exceptions.ConnectionError: ConnectionError(HTTPConnection(host='opensearch-typo', port=9200):
+    Failed to resolve 'opensearch-typo' ([Errno -2] Name or service not known))   <- 이름 해석 실패
+
+  $ kubectl -n soc describe job setup-break61
+  Environment:  OPENSEARCH_URL:  http://opensearch-typo:9200                      <- 본 컨테이너 env에 직접 박힘
+
+  $ kubectl -n soc get cm app-config -o jsonpath='{.data.OPENSEARCH_URL}'
+  http://opensearch:9200                                                         <- 공유 설정은 정상
+  $ kubectl -n soc get svc opensearch
+  opensearch   ClusterIP   10.43.15.152   <none>   9200/TCP                       <- Service도 정상
+  ```
+- **원인:** Job 컨테이너의 `env`가 `OPENSEARCH_URL`을 `opensearch-typo`로 덮어썼다. `env`는 `envFrom`(ConfigMap)보다 우선하므로 ConfigMap이 정상이어도 소용이 없다. `opensearch-typo`라는 Service는 없어서 앱이 연결을 시도하기도 전에 DNS 해석에서 실패했다. OpenSearch, Service, ConfigMap은 모두 정상이었다.
+- **왜 `DeadlineExceeded`가 아니라 `BackoffLimitExceeded`인가:** 대기용 initContainer(`wait-opensearch`)는 `envFrom`으로 ConfigMap 값만 읽기 때문에 정상 주소로 통과한다. 그다음 본 컨테이너만 오타 주소로 실패하므로 파드가 즉시 `Error`로 끝나고 재시도 횟수(`backoffLimit`)가 먼저 소진된다. 오타를 ConfigMap에 넣었다면 initContainer가 계속 기다리다가 `activeDeadlineSeconds`(300초)까지 가서 `DeadlineExceeded`가 되었을 것이다.
+- **조치:** Job의 spec은 만든 뒤 바꿀 수 없으므로(`field is immutable`) 수정하지 않고 지운다. 실습용 Job이라 지워도 정상 Job과 데이터에 영향이 없다.
+  ```bash
+  kubectl -n soc delete job setup-break61      # 시도별 파드 3개도 함께 삭제됨
+  kubectl -n soc get jobs,pods                 # setup, kb-ingest만 Complete로 남아야 함
+  ```
+- **복구 확인:** `setup`(1/1)과 `kb-ingest`(1/1)가 `Complete`로 남았고, API·생성기·워커·OpenSearch·Postgres 파드는 재시작 0회로 `Running`이었다. `kb-playbooks`는 20건 그대로, 알림·보고서 인덱스는 생성기가 계속 쓰고 있어 건수가 늘고 있었다.
+- **이해할 점:** Job 실패는 Job이 아니라 **Job이 만든 파드의 로그**에서 원인이 보인다. `Error`가 여러 개 보이면 시도마다 파드가 새로 생긴 것이고, 로그는 파드별로 따로 남는다. 설정 오류인지 일시 오류인지는 모든 시도가 같은 이유로 실패하는지로 갈린다(여기서는 세 번 모두 같은 DNS 오류 → 재시도로 해결되지 않는 설정 오류).
+- **진단 후 나눔** (깨 보기 규칙 5~6번)
+  - 진단자: 가장 오래 걸린 지점과 이유: (나눈 뒤 작성)
+  - 출제자: 나라면 어디부터 봤을지: (나눈 뒤 작성)
+  - 다음에 같은 증상을 보면 처음 칠 명령: (나눈 뒤 작성. 후보: `kubectl -n soc logs job/<이름>` 또는 파드별 `logs` — 한 번에 실패 이유가 보임)
+- **재발 방지:** 한 줄씩 짚는 순서는 Job 상태 → 시도별 파드 → 파드 로그의 마지막 오류 → Job의 `env`와 ConfigMap 값 대조 → 매니페스트. 주소는 손으로 치지 않고 ConfigMap 값을 쓰며, Job에 `env`로 같은 이름을 다시 정의하지 않는다. Job을 만든 뒤에는 `describe job`의 Environment 줄을 ConfigMap과 비교한다.
+- **진단 방식에 대한 기록:** 이 기록의 관찰과 원인 정리는 진단자가 직접 찾지 않고 Claude가 읽기 전용 명령으로 수행한 결과를 바탕으로 한다. 따라서 "가장 오래 걸린 지점"은 실제 경험이 아니므로 나눔에서 별도로 확인한다.
+- **고장 예상표와 비교:** (나눈 뒤 02 문서 9-2와 대조해 작성)
