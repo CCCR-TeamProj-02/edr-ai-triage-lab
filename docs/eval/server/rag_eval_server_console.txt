@@ -1,0 +1,26 @@
+문항     keyword   vector   hybrid  정답 문서 / 어려운 점
+k1           O        O        O  01_response_policy_tables.pd / 표 안의 정답
+k2           O        O        O  01_response_policy_tables.pd / 표 안의 정답
+k3           O        O        O  01_response_policy_tables.pd / 일반 문단
+k4           O        O        O  02_playbook_credential_dump. / 기준 문서
+k5           O        O        O  03_playbook_ransomware_heade / 머리말·꼬리말 노이즈
+k6           O        O        O  03_playbook_ransomware_heade / 여러 쪽 중 마지막 쪽
+k7           O        O        O  04_playbook_macro_powershell / 코드 블록 주변 설명
+k8           O        O        O  05_newsletter_two_column.pdf / 2단 레이아웃
+k9           O        O        O  05_newsletter_two_column.pdf / 2단 레이아웃
+k10          .        .        .  06_false_positive_guide_scan / 스캔본 OCR
+k11          O        O        O  07_weekly_report_chart.pdf / 보고서 문단
+k12          O        .        O  07_weekly_report_chart.pdf / 차트 이미지 속 숫자 (텍스트로는 못 찾음)
+k13          O        O        O  08_analyst_notes_attack_en.p / 한국어 질문 → 영어 문서 (02와 경쟁)
+k14          .        .        .  08_analyst_notes_attack_en.p / 교차 언어 의미 검색
+k15          O        O        O  09_response_matrix_complex_t / 병합 셀(가로) + 2단 헤더: high 열 두 칸이 하나로 합쳐짐
+k16          O        O        O  09_response_matrix_complex_t / 병합 셀(세로) + 행·열 교차 조회
+k17          O        O        O  09_response_matrix_complex_t / 각주(※1)를 표 아래에서 찾아 연결
+k18          O        O        O  09_response_matrix_complex_t / 〃(위와 같음) 표기 해석: 표에는 '당직 팀장'이 아니라 '〃'만 있음
+k19          O        O        O  09_response_matrix_complex_t / 쪽을 넘어간 표 + 병합 칸이 잘림 + 〃 표기
+k20          O        O        O  09_response_matrix_complex_t / 선 없는 고정폭 표: 숫자가 어느 열인지
+k21          O        O        O  09_response_matrix_complex_t / 가로 페이지의 넓은 표 (03번 PDF와 경쟁)
+
+keyword  Recall@3 = 0.905   문서별 01:3/3 02:1/1 03:2/2 04:1/1 05:2/2 06:0/1 07:2/2 08:1/2 09:7/7
+vector   Recall@3 = 0.857   문서별 01:3/3 02:1/1 03:2/2 04:1/1 05:2/2 06:0/1 07:1/2 08:1/2 09:7/7
+hybrid   Recall@3 = 0.905   문서별 01:3/3 02:1/1 03:2/2 04:1/1 05:2/2 06:0/1 07:2/2 08:1/2 09:7/7
