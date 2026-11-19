@@ -1,0 +1,59 @@
+# PDF 적재 Job (인프라 6단계). Unstructured가 무거워서 앱 이미지가 아니라 Dockerfile.kb 이미지를 씁니다.
+# PDF(data/kb/pdf)는 이미지에 들어 있습니다. 적재 전에 `ensure_index(recreate=True)`로 KB 인덱스를 새로 만들어
+# 다시 실행해도 청크가 중복되지 않습니다(멱등).
+#
+# 이미지 빌드·푸시 (앱 이미지와 별개, 태그는 실제로 푸시한 값으로 맞출 것):
+#   docker build -f Dockerfile.kb -t ghcr.io/hanjyoon01/edr-ai-triage-kb:0.1.0 .
+#   docker push ghcr.io/hanjyoon01/edr-ai-triage-kb:0.1.0
+# 임베딩: ConfigMap의 FAKE_LLM=true를 따라 가짜 벡터로 적재합니다(키 불필요, 의미 검색은 안 됨).
+#   실제 임베딩이 필요하면 env에 FAKE_LLM="false"를 넣고 app-secrets의 OPENAI_API_KEY를 채웁니다.
+# 다시 실행: kubectl -n soc delete job kb-ingest --ignore-not-found && kubectl apply -f infra/k8s/61-kb-ingest-job.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kb-ingest
+  namespace: soc
+spec:
+  # 임베딩 API 일시 오류 같은 일시 실패는 재시도로 넘어가지만, 오래 걸리는 작업이라 2번만 더 시도합니다.
+  backoffLimit: 2
+  # 파싱과 임베딩이 PDF 9종에 수 분 걸립니다. 20분을 넘기면 멈춘 것으로 보고 강제 종료합니다.
+  activeDeadlineSeconds: 1200
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels:
+        app: kb-ingest
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+        - name: ghcr-pull
+      initContainers:
+        - name: wait-opensearch
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              until wget -q -O /dev/null "$OPENSEARCH_URL/_cluster/health"; do
+                echo "OpenSearch 대기 중: $OPENSEARCH_URL"; sleep 3
+              done
+          envFrom:
+            - configMapRef:
+                name: app-config
+          resources:
+            requests: { cpu: "10m", memory: "16Mi" }
+            limits: { memory: "32Mi" }
+      containers:
+        - name: kb-ingest
+          image: ghcr.io/hanjyoon01/edr-ai-triage-kb:0.1.0
+          imagePullPolicy: IfNotPresent
+          command: ["python", "-m", "soc.kb.ingest"]
+          envFrom:
+            - configMapRef:
+                name: app-config      # PARSE_STRATEGY=fast, CHUNK_MAX_CHARACTERS=700, OPENSEARCH_URL, FAKE_LLM=true
+            - secretRef:
+                name: app-secrets
+          resources:
+            requests: { cpu: "500m", memory: "1Gi" }
+            # fast 전략 기준. hi_res는 이보다 훨씬 많이 쓰므로 limit이 작으면 OOMKilled (깨 보기 6-2).
+            limits: { memory: "2Gi" }
