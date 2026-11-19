@@ -259,3 +259,37 @@ kubectl -n soc get events --sort-by=.lastTimestamp | tail -20
 - **재발 방지:** 한 줄씩 짚는 순서는 Job 상태 → 시도별 파드 → 파드 로그의 마지막 오류 → Job의 `env`와 ConfigMap 값 대조 → 매니페스트. 주소는 손으로 치지 않고 ConfigMap 값을 쓰며, Job에 `env`로 같은 이름을 다시 정의하지 않는다. Job을 만든 뒤에는 `describe job`의 Environment 줄을 ConfigMap과 비교한다.
 - **진단 방식에 대한 기록:** 이 기록의 관찰과 원인 정리는 진단자가 직접 찾지 않고 Claude가 읽기 전용 명령으로 수행한 결과를 바탕으로 한다. 따라서 "가장 오래 걸린 지점"은 실제 경험이 아니므로 나눔에서 별도로 확인한다.
 - **고장 예상표와 비교:** (나눈 뒤 02 문서 9-2와 대조해 작성)
+
+### [7-1] 새 API 파드 즉시 종료와 RollingUpdate 롤백 (D3-2 · 2026-11-19 · 출제: 📘 팀원 · 진단·복구: 🔍 박찬솔)
+- **정상 배포 확인:** 커밋 `f64e4bc`의 GitHub Actions에서 test(32초), build(43초)가 성공했다. 로컬 전체 테스트는 25 passed였다. GHCR에 게시한 `ghcr.io/cccr-teamproj-02/edr-ai-triage-lab:f64e4bc`를 API에 적용했고, rollout 성공과 외부 `/healthz` 200(`backend: real`), `/readyz` 200(`ready`, `opensearch`, `postgres` 모두 true)을 확인했다.
+- **배포 전 이미지:** `ghcr.io/hanjyoon01/edr-ai-triage-api:0.1.0`. 이번 장애 직전 정상 버전은 새 이미지 `f64e4bc`이며, 최초 이미지로 되돌리는 실험은 아니다. API에는 이미지 다운로드 인증용 `ghcr-pull`이 설정되어 있었다.
+- **장애 재현 방식:** 팀원이 Deployment의 API 실행 명령을 `sh -c 'exit 1'`로 변경했다. 정상 이미지의 실행 명령을 덮어써 즉시 실패를 재현한 것으로, 이미지 자체에 결함을 넣은 실험은 아니다. describe에서 확인한 새 파드 시작 시각은 11:57:40 KST이며, 정확한 장애 투입·복구 소요 시간은 측정하지 않았다.
+- **증상과 증거:**
+  ```text
+  Deployment api: READY 1/1, UP-TO-DATE 1, AVAILABLE 1
+  api-66d6959bb4-7ghc9  0/1  CrashLoopBackOff  재시작 4회(이후 describe에서 5회)
+  api-8576ff859f-dzjw5  1/1  Running           재시작 0회
+  ```
+  `UP-TO-DATE 1`은 새 설정의 파드가 생성됐다는 의미이며 준비 완료를 뜻하지 않는다. 기존 정상 파드가 남아 있는 동안 외부 `/healthz`는 200이었다.
+- **진단 명령:**
+  ```bash
+  sudo kubectl -n soc get deployment api
+  sudo kubectl -n soc get pods -l app=api -o wide
+  sudo kubectl -n soc logs api-66d6959bb4-7ghc9 --previous --tail=50
+  sudo kubectl -n soc describe pod api-66d6959bb4-7ghc9
+  curl -i --max-time 10 http://soc.1.201.110.71.nip.io/healthz
+  ```
+  위 파드 이름은 이번 실험의 관측값이다. 재실습할 때는 get pods에서 현재 이름을 확인한다.
+- **원인:** 이전 컨테이너 로그는 비어 있었다. describe에서 `Command: sh / -c / exit 1`, `Last State: Terminated`, `Reason: Error`, `Exit Code: 1`을 확인했다. 시작·종료 시각이 12:00:23 KST로 같았다. `exit 1`은 출력 없이 즉시 실패하므로 로그가 없었고, API가 뜨지 않아 readiness의 8000번 포트 연결도 `connection refused`로 실패했다. 이미지 접근은 성공했으므로 이미지 다운로드 실패가 아니다.
+- **복구 절차:** 배포 이력을 확인하고 장애 직전 설정으로 롤백한다. 다른 배포가 사이에 들어갔다면 이력에서 정상 revision을 확인한 뒤 지정해야 한다. 이번 기록에는 revision 번호를 별도로 확보하지 않았다.
+  ```bash
+  sudo kubectl -n soc rollout history deployment/api
+  sudo kubectl -n soc rollout undo deployment/api
+  sudo kubectl -n soc rollout status deployment/api --timeout=180s
+  sudo kubectl -n soc get pods -l app=api
+  curl -i --max-time 10 http://soc.1.201.110.71.nip.io/readyz
+  ```
+- **복구 결과:** 사용자가 롤백 성공, API 파드 `1/1 Running`, 외부 `/readyz` 200을 확인했다. rollout undo는 이미지 주소만이 아니라 실행 명령을 포함한 이전 파드 템플릿으로 복원하는 조치다.
+- **고장 예상표와 비교:** 새 파드가 정상 준비 상태가 되지 못해 교체가 완료되지 않는 동안 기존 파드가 서비스를 유지한다는 기대를 확인했다. 외부 응답 200만으로 새 배포 성공을 판단할 수 없으며, 새 파드 상태와 rollout 상태를 함께 봐야 한다.
+- **재발 방지·확인 범위:** 로그가 비어 있으면 describe의 Command, Last State, Exit Code, Events를 확인한다. 배포 전 정상 이미지·revision을 기록하고 배포 후 rollout과 외부 health/ready 응답을 확인한다. kubectl로 바꾼 설정은 Git의 YAML에 자동 반영되지 않으므로 배포 매니페스트와 실제 설정을 별도로 맞춘다. 이번 확인은 API 배포·롤백 범위이며 Dify 실제 연결·검색 성공까지 의미하지 않는다.
+- **진단 후 나눔:** 팀원이 장애를 넣고 기록 담당이 상태·로그·종료 코드를 확인해 롤백했다. 가장 오래 걸린 지점과 팀원에게 설명한 내용은 실제 나눔 후 추가한다.
